@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>MunchMetrics Color Palette</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-container-highest": "#dedcdc",
+                      "secondary-fixed": "#dcc9ff",
+                      "on-surface-variant": "#5c5b5b",
+                      "tertiary-dim": "#893600",
+                      "on-secondary": "#f8f0ff",
+                      "surface-tint": "#0846ed",
+                      "on-primary-container": "#001867",
+                      "on-background": "#2f2f2e",
+                      "surface-bright": "#f9f6f5",
+                      "primary-fixed": "#859aff",
+                      "error-dim": "#a70138",
+                      "tertiary-fixed-dim": "#ff7f39",
+                      "error-container": "#f74b6d",
+                      "on-secondary-fixed": "#430097",
+                      "primary-container": "#859aff",
+                      "on-secondary-container": "#5b00c7",
+                      "surface": "#f9f6f5",
+                      "on-secondary-fixed-variant": "#6514d6",
+                      "outline-variant": "#afadac",
+                      "tertiary-fixed": "#ff9560",
+                      "on-primary": "#f2f1ff",
+                      "background": "#f9f6f5",
+                      "on-tertiary-fixed-variant": "#652600",
+                      "tertiary": "#9c3f00",
+                      "surface-dim": "#d6d4d3",
+                      "outline": "#787676",
+                      "on-tertiary-fixed": "#2f0e00",
+                      "surface-container-high": "#e4e2e1",
+                      "on-error": "#ffefef",
+                      "on-error-container": "#510017",
+                      "on-surface": "#2f2f2e",
+                      "primary": "#0846ed",
+                      "secondary-fixed-dim": "#d0b8ff",
+                      "primary-dim": "#003cd3",
+                      "secondary-container": "#dcc9ff",
+                      "primary-fixed-dim": "#718bff",
+                      "inverse-on-surface": "#9e9c9c",
+                      "secondary": "#702ae1",
+                      "on-primary-fixed-variant": "#00207e",
+                      "surface-container-lowest": "#ffffff",
+                      "inverse-primary": "#6d88ff",
+                      "tertiary-container": "#ff9560",
+                      "surface-variant": "#dedcdc",
+                      "surface-container": "#eae7e7",
+                      "error": "#b41340",
+                      "surface-container-low": "#f3f0ef",
+                      "on-primary-fixed": "#000000",
+                      "inverse-surface": "#0e0e0e",
+                      "on-tertiary": "#fff0ea",
+                      "secondary-dim": "#6411d5",
+                      "on-tertiary-container": "#571f00"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "fontFamily": {
+                      "headline": ["Plus Jakarta Sans"],
+                      "body": ["Inter"],
+                      "label": ["Inter"]
+              }
+            },
+          },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f9f6f5;
+            color: #2f2f2e;
+        }
+        .headline-font {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-background min-h-screen pb-32">
+<!-- TopAppBar -->
+<header class="w-full sticky top-0 z-50 bg-[#f9f6f5] dark:bg-zinc-950 flex items-center justify-between px-6 py-4 w-full">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center overflow-hidden">
+<img alt="User Profile" class="w-full h-full object-cover" data-alt="minimalist avatar of a person with stylish glasses and a friendly smile on a soft blue background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAFGB7wIXjEIcX8yUkVCS6EKxEhPFIjtsOaerfKqBdxmXhv0BYordmllTNC_AdVbft_I5mD7fTRrrH0LRJmXa9D5SAr6p8qSuomqzVXvWalK3hXA31XziEtKKEgLZp2aLn16OsJEXS0l5KPWAZiiW_eoxHOKX-hrAIhQ12vKGKqkQ2p6WdKIW2W4HizSHjEefkbwDCQcrfYyuDDxw2HM2pFrU0EUCqBnV_uUQvntDv-voMShGiuMERH4qTQeKf-UNNsn31zqs1aYmA"/>
+</div>
+<h1 class="font-['Plus_Jakarta_Sans'] font-bold text-2xl tracking-tight text-blue-700 dark:text-blue-400 font-extrabold tracking-tighter">The Kinetic Pantry</h1>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors active:scale-95 duration-150 text-blue-600 dark:text-blue-400">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+</div>
+</header>
+<main class="max-w-7xl mx-auto px-6 py-8">
+<!-- Hero Section -->
+<section class="mb-12">
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
+<div>
+<span class="font-label text-[11px] tracking-wider uppercase text-on-surface-variant mb-2 block">Design System</span>
+<h2 class="headline-font text-5xl font-extrabold tracking-tight text-on-surface max-w-2xl">Visual Identity &amp; Color Architecture</h2>
+</div>
+<div class="bg-surface-container-low px-6 py-4 rounded-xl flex items-center gap-4">
+<div class="text-right">
+<p class="text-xs font-label uppercase tracking-widest text-on-surface-variant">Active Theme</p>
+<p class="font-bold headline-font">Kinetic Light</p>
+</div>
+<div class="w-12 h-12 rounded-lg bg-gradient-to-tr from-primary to-secondary flex items-center justify-center">
+<span class="material-symbols-outlined text-white" data-icon="palette">palette</span>
+</div>
+</div>
+</div>
+<p class="text-on-surface-variant text-lg max-w-3xl leading-relaxed">
+                Our palette is designed for dynamic precision. We use high-energy vibrance to organize data through emotion, moving away from clinical dashboards toward a high-end editorial experience.
+            </p>
+</section>
+<!-- Color Categories Grid -->
+<div class="space-y-16">
+<!-- Brand Anchors -->
+<section>
+<div class="flex items-center gap-4 mb-8">
+<h3 class="headline-font text-2xl font-bold tracking-tight">Brand Anchors</h3>
+<div class="h-px flex-1 bg-outline-variant/20"></div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+<!-- Primary Blue -->
+<div class="group relative bg-surface-container-lowest p-6 rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300">
+<div class="w-full h-48 bg-primary rounded-lg mb-4 flex items-end p-4">
+<span class="text-on-primary font-mono text-sm">#0846ed</span>
+</div>
+<h4 class="headline-font font-bold text-xl mb-1">Logistical Anchor</h4>
+<p class="text-on-surface-variant text-sm mb-4">The Primary Blue. Used for core budget actions and main navigation.</p>
+<div class="flex items-center gap-2">
+<span class="px-3 py-1 bg-primary/10 text-primary rounded-full text-[10px] font-bold uppercase tracking-widest">Primary</span>
+</div>
+</div>
+<!-- Secondary Purple -->
+<div class="group relative bg-surface-container-lowest p-6 rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300">
+<div class="w-full h-48 bg-secondary rounded-lg mb-4 flex items-end p-4">
+<span class="text-on-secondary font-mono text-sm">#702ae1</span>
+</div>
+<h4 class="headline-font font-bold text-xl mb-1">Status Purple</h4>
+<p class="text-on-surface-variant text-sm mb-4">Represents premium snack categories and healthy budget cycles.</p>
+<div class="flex items-center gap-2">
+<span class="px-3 py-1 bg-secondary/10 text-secondary rounded-full text-[10px] font-bold uppercase tracking-widest">Secondary</span>
+</div>
+</div>
+<!-- Tertiary Orange -->
+<div class="group relative bg-surface-container-lowest p-6 rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300">
+<div class="w-full h-48 bg-tertiary rounded-lg mb-4 flex items-end p-4">
+<span class="text-on-tertiary font-mono text-sm">#9c3f00</span>
+</div>
+<h4 class="headline-font font-bold text-xl mb-1">Alert Orange</h4>
+<p class="text-on-surface-variant text-sm mb-4">Used for urgent budget warnings or indulgent "treat" categories.</p>
+<div class="flex items-center gap-2">
+<span class="px-3 py-1 bg-tertiary/10 text-tertiary rounded-full text-[10px] font-bold uppercase tracking-widest">Tertiary</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Semantic & Functional States -->
+<section>
+<div class="flex items-center gap-4 mb-8">
+<h3 class="headline-font text-2xl font-bold tracking-tight">Functional States</h3>
+<div class="h-px flex-1 bg-outline-variant/20"></div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+<!-- Success -->
+<div class="bg-surface-container-low p-5 rounded-xl">
+<div class="w-full h-24 bg-primary-container rounded-lg mb-4 flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary-container text-3xl" data-icon="check_circle">check_circle</span>
+</div>
+<p class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant mb-1">Safe Status</p>
+<p class="headline-font font-bold mb-1">Primary Container</p>
+<p class="font-mono text-xs opacity-60">#859aff</p>
+</div>
+<!-- Warning -->
+<div class="bg-surface-container-low p-5 rounded-xl">
+<div class="w-full h-24 bg-tertiary-container rounded-lg mb-4 flex items-center justify-center">
+<span class="material-symbols-outlined text-on-tertiary-container text-3xl" data-icon="warning">warning</span>
+</div>
+<p class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant mb-1">Attention</p>
+<p class="headline-font font-bold mb-1">Tertiary Container</p>
+<p class="font-mono text-xs opacity-60">#ff9560</p>
+</div>
+<!-- Error -->
+<div class="bg-surface-container-low p-5 rounded-xl">
+<div class="w-full h-24 bg-error-container rounded-lg mb-4 flex items-center justify-center">
+<span class="material-symbols-outlined text-on-error-container text-3xl" data-icon="error">error</span>
+</div>
+<p class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant mb-1">Critical</p>
+<p class="headline-font font-bold mb-1">Error Container</p>
+<p class="font-mono text-xs opacity-60">#f74b6d</p>
+</div>
+<!-- Info -->
+<div class="bg-surface-container-low p-5 rounded-xl">
+<div class="w-full h-24 bg-secondary-container rounded-lg mb-4 flex items-center justify-center">
+<span class="material-symbols-outlined text-on-secondary-container text-3xl" data-icon="info">info</span>
+</div>
+<p class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant mb-1">Information</p>
+<p class="headline-font font-bold mb-1">Secondary Container</p>
+<p class="font-mono text-xs opacity-60">#dcc9ff</p>
+</div>
+</div>
+</section>
+<!-- Tonal Surfaces -->
+<section class="grid grid-cols-1 lg:grid-cols-3 gap-12">
+<div class="lg:col-span-1">
+<h3 class="headline-font text-2xl font-bold tracking-tight mb-4">Surface Hierarchy</h3>
+<p class="text-on-surface-variant text-sm leading-relaxed mb-6">
+                        We avoid 1px borders. Structural boundaries are defined through Background Tonal Shifts, creating a series of nested physical layers.
+                    </p>
+<div class="flex flex-col gap-2">
+<div class="flex items-center gap-3 p-3 bg-surface rounded-lg border border-outline-variant/10">
+<div class="w-4 h-4 rounded bg-surface"></div>
+<span class="text-xs font-medium">Surface (Base)</span>
+</div>
+<div class="flex items-center gap-3 p-3 bg-surface-container-low rounded-lg">
+<div class="w-4 h-4 rounded bg-surface-container-low shadow-sm"></div>
+<span class="text-xs font-medium">Container Low (Sections)</span>
+</div>
+<div class="flex items-center gap-3 p-3 bg-surface-container-lowest rounded-lg shadow-sm">
+<div class="w-4 h-4 rounded bg-surface-container-lowest border border-outline-variant/10"></div>
+<span class="text-xs font-medium">Container Lowest (Objects)</span>
+</div>
+</div>
+</div>
+<div class="lg:col-span-2 bg-surface-container-low rounded-[2rem] p-8 relative overflow-hidden">
+<div class="relative z-10">
+<h4 class="headline-font font-bold text-lg mb-6">Layered Composition Example</h4>
+<div class="glass-card p-8 rounded-2xl shadow-xl border border-white/20">
+<div class="flex items-center justify-between mb-8">
+<div>
+<p class="font-label text-[11px] uppercase tracking-widest text-on-surface-variant">Glassmorphism Scale</p>
+<h5 class="headline-font text-3xl font-extrabold text-primary">Abundance</h5>
+</div>
+<div class="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-secondary p-1">
+<div class="w-full h-full rounded-full bg-white flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary" data-icon="auto_awesome">auto_awesome</span>
+</div>
+</div>
+</div>
+<div class="space-y-4">
+<div class="h-2 w-full bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full w-3/4 bg-gradient-to-r from-primary to-secondary"></div>
+</div>
+<div class="flex justify-between text-xs font-medium opacity-60">
+<span>Layer Depth 01</span>
+<span>24px Blur Radius</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Decorative shapes -->
+<div class="absolute -top-10 -right-10 w-40 h-40 bg-primary/10 rounded-full blur-3xl"></div>
+<div class="absolute -bottom-20 -left-10 w-64 h-64 bg-secondary/10 rounded-full blur-3xl"></div>
+</div>
+</section>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pt-3 pb-8 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl shadow-[0_-8px_30px_rgb(0,0,0,0.04)] fixed bottom-0 w-full rounded-t-[2rem] border-t border-zinc-200/20">
+<a class="flex flex-col items-center justify-center text-zinc-400 dark:text-zinc-500 px-5 py-1.5 hover:opacity-80 tap-highlight-transparent active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="dashboard">dashboard</span>
+<span class="font-['Inter'] font-medium text-[11px] tracking-wider uppercase">Dashboard</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-blue-100/50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-2xl px-5 py-1.5 hover:opacity-80 tap-highlight-transparent active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="insights" style="font-variation-settings: 'FILL' 1;">insights</span>
+<span class="font-['Inter'] font-medium text-[11px] tracking-wider uppercase">Analysis</span>
+</a>
+<a class="flex flex-col items-center justify-center text-zinc-400 dark:text-zinc-500 px-5 py-1.5 hover:opacity-80 tap-highlight-transparent active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="history">history</span>
+<span class="font-['Inter'] font-medium text-[11px] tracking-wider uppercase">History</span>
+</a>
+</nav>
+</body></html>

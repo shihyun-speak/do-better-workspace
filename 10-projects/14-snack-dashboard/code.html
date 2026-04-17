@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Category Analysis - Kinetic Pantry</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface": "#f9f6f5",
+                    "inverse-on-surface": "#9e9c9c",
+                    "surface-dim": "#d6d4d3",
+                    "surface-container-lowest": "#ffffff",
+                    "on-error-container": "#510017",
+                    "tertiary-dim": "#893600",
+                    "on-surface": "#2f2f2e",
+                    "secondary-fixed": "#dcc9ff",
+                    "on-tertiary-fixed-variant": "#652600",
+                    "surface-container-high": "#e4e2e1",
+                    "on-primary-container": "#001867",
+                    "surface-bright": "#f9f6f5",
+                    "on-primary": "#f2f1ff",
+                    "on-primary-fixed-variant": "#00207e",
+                    "error": "#b41340",
+                    "primary": "#0846ed",
+                    "on-error": "#ffefef",
+                    "on-secondary-fixed": "#430097",
+                    "inverse-primary": "#6d88ff",
+                    "on-secondary-container": "#5b00c7",
+                    "surface-tint": "#0846ed",
+                    "secondary-container": "#dcc9ff",
+                    "secondary": "#702ae1",
+                    "on-secondary": "#f8f0ff",
+                    "on-tertiary-fixed": "#2f0e00",
+                    "surface-container-low": "#f3f0ef",
+                    "surface-container-highest": "#dedcdc",
+                    "surface-container": "#eae7e7",
+                    "error-container": "#f74b6d",
+                    "on-primary-fixed": "#000000",
+                    "primary-dim": "#003cd3",
+                    "on-secondary-fixed-variant": "#6514d6",
+                    "error-dim": "#a70138",
+                    "tertiary": "#9c3f00",
+                    "primary-container": "#859aff",
+                    "outline": "#787676",
+                    "inverse-surface": "#0e0e0e",
+                    "background": "#f9f6f5",
+                    "primary-fixed-dim": "#718bff",
+                    "on-tertiary": "#fff0ea",
+                    "tertiary-fixed": "#ff9560",
+                    "on-surface-variant": "#5c5b5b",
+                    "tertiary-container": "#ff9560",
+                    "secondary-dim": "#6411d5",
+                    "on-tertiary-container": "#571f00",
+                    "secondary-fixed-dim": "#d0b8ff",
+                    "tertiary-fixed-dim": "#ff7f39",
+                    "outline-variant": "#afadac",
+                    "surface-variant": "#dedcdc",
+                    "primary-fixed": "#859aff",
+                    "on-background": "#2f2f2e"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Plus Jakarta Sans"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(24px);
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body selection:bg-primary-container selection:text-on-primary-container">
+<!-- SideNavBar Shell -->
+<aside class="bg-[#f3f0ef] dark:bg-[#262625] h-screen w-72 fixed left-0 top-0 z-50 flex flex-col p-6 gap-y-4">
+<div class="mb-8 px-2 flex items-center gap-3">
+<div class="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-on-primary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">inventory_2</span>
+</div>
+<div>
+<h1 class="text-2xl font-extrabold text-[#0846ed] dark:text-[#859aff] font-headline tracking-tight">Kinetic Pantry</h1>
+<p class="text-xs font-label text-on-surface-variant uppercase tracking-widest">Office Hub</p>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-3 p-3 rounded-lg text-[#5c5b5b] dark:text-[#afadac] font-medium hover:bg-[#ffffff]/50 transition-all scale-98 active:opacity-80" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-headline font-bold tracking-tight">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 p-3 rounded-lg text-[#5c5b5b] dark:text-[#afadac] font-medium hover:bg-[#ffffff]/50 transition-all scale-98 active:opacity-80" href="#">
+<span class="material-symbols-outlined">inventory_2</span>
+<span class="font-headline font-bold tracking-tight">Inventory</span>
+</a>
+<a class="flex items-center gap-3 p-3 rounded-lg text-[#5c5b5b] dark:text-[#afadac] font-medium hover:bg-[#ffffff]/50 transition-all scale-98 active:opacity-80" href="#">
+<span class="material-symbols-outlined">payments</span>
+<span class="font-headline font-bold tracking-tight">Snack Budget</span>
+</a>
+<a class="flex items-center gap-3 p-3 rounded-lg text-[#0846ed] dark:text-[#859aff] font-bold border-r-4 border-[#0846ed] hover:bg-[#ffffff]/50 transition-all scale-98 active:opacity-80" href="#">
+<span class="material-symbols-outlined">leaderboard</span>
+<span class="font-headline font-bold tracking-tight">Analytics</span>
+</a>
+<a class="flex items-center gap-3 p-3 rounded-lg text-[#5c5b5b] dark:text-[#afadac] font-medium hover:bg-[#ffffff]/50 transition-all scale-98 active:opacity-80" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-headline font-bold tracking-tight">Settings</span>
+</a>
+</nav>
+<div class="mt-auto space-y-1 border-t border-outline-variant/10 pt-4">
+<button class="w-full bg-gradient-to-br from-primary to-primary-container text-on-primary font-bold py-3 px-4 rounded-xl mb-4 flex items-center justify-center gap-2 shadow-sm">
+<span class="material-symbols-outlined">add</span>
+            New Order
+        </button>
+<a class="flex items-center gap-3 p-3 rounded-lg text-[#5c5b5b] dark:text-[#afadac] font-medium hover:bg-[#ffffff]/50 transition-all" href="#">
+<span class="material-symbols-outlined">help</span>
+<span class="font-headline font-bold tracking-tight">Support</span>
+</a>
+<a class="flex items-center gap-3 p-3 rounded-lg text-[#5c5b5b] dark:text-[#afadac] font-medium hover:bg-[#ffffff]/50 transition-all" href="#">
+<span class="material-symbols-outlined">logout</span>
+<span class="font-headline font-bold tracking-tight">Logout</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="ml-72 min-h-screen">
+<!-- TopNavBar Shell -->
+<header class="sticky top-0 w-full z-40 bg-[#f9f6f5]/70 backdrop-blur-xl flex justify-between items-center h-20 px-12 shadow-sm shadow-black/5">
+<div class="flex items-center flex-1 max-w-xl">
+<div class="w-full bg-surface-container-highest rounded-full px-4 py-2 flex items-center gap-3 focus-within:ring-2 focus-within:ring-[#0846ed]/20 transition-all">
+<span class="material-symbols-outlined text-on-surface-variant">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm w-full font-body" placeholder="Search analytics..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex gap-2">
+<button class="text-[#5c5b5b] hover:bg-white rounded-lg p-2 transition-all">
+<span class="material-symbols-outlined">notifications_active</span>
+</button>
+<button class="text-[#5c5b5b] hover:bg-white rounded-lg p-2 transition-all">
+<span class="material-symbols-outlined">chat_bubble</span>
+</button>
+</div>
+<div class="flex items-center gap-3 pl-6 border-l border-outline-variant/20">
+<div class="text-right">
+<p class="text-sm font-bold font-headline">Office Manager</p>
+<p class="text-[10px] text-on-surface-variant font-label tracking-wider uppercase">Admin</p>
+</div>
+<img alt="Manager Profile" class="w-10 h-10 rounded-full border-2 border-white shadow-sm" data-alt="professional headshot of a smiling manager in a light-filled office environment with soft natural lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAS-5-vZVMwHv0hWqWe6FMS17ZdVgubSbu9HR78lTPrtQv36s_dU98LaPcO2uPTJCCVyVJavh4yikZFYa3qth45pffURkaIfzNJBhwhLa2l8KaUwIT-V0yrzahbMhCE6NbTykIP1zOCPc0py6jUTmuMDVWyDwjhUuSiyG0T5EZ6IQzDub_GzlmZJV6X8WOAh4bkNOfNg42pWOuUDpUhonpkbk0FQni6mp_2w8uNRQUeQcvi9fFjZ60-8egeqhzUsMD_uxc2geHpWLQ"/>
+</div>
+</div>
+</header>
+<!-- Page Canvas -->
+<div class="p-12 space-y-8">
+<!-- Hero Header -->
+<div class="flex justify-between items-end">
+<div>
+<h2 class="text-4xl font-extrabold font-headline tracking-tighter text-on-background">Category Analysis</h2>
+<p class="text-on-surface-variant mt-1">Deep dive into the office's munching patterns.</p>
+</div>
+<div class="flex gap-3">
+<div class="bg-surface-container-low px-4 py-2 rounded-xl flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">calendar_month</span>
+<span class="text-sm font-bold">This Quarter</span>
+<span class="material-symbols-outlined text-on-surface-variant text-sm">expand_more</span>
+</div>
+</div>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-12 gap-6">
+<!-- Main Breakdown: Donut Chart Area -->
+<div class="col-span-12 lg:col-span-8 bg-surface-container-low rounded-3xl p-8 flex flex-col md:flex-row gap-12 items-center">
+<div class="relative w-64 h-64 flex-shrink-0">
+<!-- Simulated SVG Donut Chart -->
+<svg class="w-full h-full transform -rotate-90" viewbox="0 0 100 100">
+<!-- 과자/스낵 40% -->
+<circle cx="50" cy="50" fill="transparent" r="40" stroke="#0846ed" stroke-dasharray="100.53 150.8" stroke-width="12"></circle>
+<!-- 음료 25% -->
+<circle cx="50" cy="50" fill="transparent" r="40" stroke="#702ae1" stroke-dasharray="62.83 188.5" stroke-dashoffset="-100.53" stroke-width="12"></circle>
+<!-- 과일 20% -->
+<circle cx="50" cy="50" fill="transparent" r="40" stroke="#ff9560" stroke-dasharray="50.27 201.1" stroke-dashoffset="-163.36" stroke-width="12"></circle>
+<!-- 계절간식 15% -->
+<circle cx="50" cy="50" fill="transparent" r="40" stroke="#dedcdc" stroke-dasharray="37.7 213.6" stroke-dashoffset="-213.63" stroke-width="12"></circle>
+</svg>
+<div class="absolute inset-0 flex flex-col items-center justify-center">
+<span class="text-4xl font-extrabold font-headline">₩2.4M</span>
+<span class="text-[10px] font-label text-on-surface-variant uppercase tracking-widest">Total Spent</span>
+</div>
+</div>
+<div class="flex-1 space-y-6">
+<h3 class="text-2xl font-bold font-headline">Spending Breakdown</h3>
+<div class="grid grid-cols-2 gap-y-4 gap-x-8">
+<div class="space-y-1">
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 rounded-full bg-primary"></div>
+<span class="font-bold text-sm">과자/스낵</span>
+</div>
+<p class="text-xs text-on-surface-variant pl-5">40% of budget • ₩960k</p>
+</div>
+<div class="space-y-1">
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 rounded-full bg-secondary"></div>
+<span class="font-bold text-sm">음료</span>
+</div>
+<p class="text-xs text-on-surface-variant pl-5">25% of budget • ₩600k</p>
+</div>
+<div class="space-y-1">
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 rounded-full bg-tertiary"></div>
+<span class="font-bold text-sm">과일</span>
+</div>
+<p class="text-xs text-on-surface-variant pl-5">20% of budget • ₩480k</p>
+</div>
+<div class="space-y-1">
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 rounded-full bg-surface-variant"></div>
+<span class="font-bold text-sm">계절간식</span>
+</div>
+<p class="text-xs text-on-surface-variant pl-5">15% of budget • ₩360k</p>
+</div>
+</div>
+<button class="bg-surface-container-highest px-6 py-3 rounded-xl font-bold text-sm hover:bg-surface-dim transition-all">View Full Ledger</button>
+</div>
+</div>
+<!-- Smart Suggestion Glass Card -->
+<div class="col-span-12 lg:col-span-4 glass-card rounded-3xl p-8 shadow-xl shadow-primary/5 flex flex-col relative overflow-hidden">
+<div class="absolute -top-12 -right-12 w-32 h-32 bg-primary/10 rounded-full blur-3xl"></div>
+<div class="flex items-center justify-between mb-8">
+<span class="bg-secondary-container/20 text-secondary px-3 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase">AI Insight</span>
+<span class="material-symbols-outlined text-secondary">auto_awesome</span>
+</div>
+<h3 class="text-xl font-bold font-headline mb-4 leading-tight">Smart Suggestion</h3>
+<p class="text-on-surface-variant text-sm mb-6 leading-relaxed">
+                    "Drinks consumption peaked by <span class="font-bold text-on-surface">18%</span> on Tuesdays. Consider shifting order bulk delivery to Monday afternoons to maintain optimal stock levels and save on rush shipping."
+                </p>
+<div class="mt-auto pt-6 border-t border-outline-variant/20">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center">
+<span class="material-symbols-outlined text-on-surface">trending_down</span>
+</div>
+<div>
+<p class="text-xs font-bold">Projected Monthly Savings</p>
+<p class="text-lg font-extrabold text-primary">₩45,000</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Detailed Categories with Progress Bars -->
+<div class="col-span-12 bg-surface-container-lowest rounded-3xl p-8 shadow-sm">
+<div class="flex items-center justify-between mb-8">
+<h3 class="text-2xl font-bold font-headline">Category Usage vs. Budget</h3>
+<div class="flex items-center gap-4">
+<span class="flex items-center gap-1 text-xs text-on-surface-variant">
+<div class="w-2 h-2 rounded-full bg-surface-container-high"></div> Budget Limit
+                        </span>
+<span class="flex items-center gap-1 text-xs text-on-surface-variant">
+<div class="w-2 h-2 rounded-full bg-primary"></div> Actual Used
+                        </span>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-y-8 gap-x-16">
+<!-- Category Item 1 -->
+<div class="space-y-3">
+<div class="flex justify-between items-end">
+<div>
+<span class="font-bold font-headline">과자/스낵 (Crunchy Snacks)</span>
+<p class="text-xs text-on-surface-variant">Last restock: 2 days ago</p>
+</div>
+<span class="font-bold text-primary">96%</span>
+</div>
+<div class="h-3 w-full bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-gradient-to-r from-primary to-secondary w-[96%] rounded-full"></div>
+</div>
+</div>
+<!-- Category Item 2 -->
+<div class="space-y-3">
+<div class="flex justify-between items-end">
+<div>
+<span class="font-bold font-headline">음료 (Beverages)</span>
+<p class="text-xs text-on-surface-variant">High frequency item</p>
+</div>
+<span class="font-bold text-primary">62%</span>
+</div>
+<div class="h-3 w-full bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-gradient-to-r from-primary to-secondary w-[62%] rounded-full"></div>
+</div>
+</div>
+<!-- Category Item 3 -->
+<div class="space-y-3">
+<div class="flex justify-between items-end">
+<div>
+<span class="font-bold font-headline">과일 (Fresh Fruits)</span>
+<p class="text-xs text-on-surface-variant">Healthy choice incentive</p>
+</div>
+<span class="font-bold text-primary">45%</span>
+</div>
+<div class="h-3 w-full bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-gradient-to-r from-primary to-secondary w-[45%] rounded-full"></div>
+</div>
+</div>
+<!-- Category Item 4 -->
+<div class="space-y-3">
+<div class="flex justify-between items-end">
+<div>
+<span class="font-bold font-headline">계절간식 (Seasonal Treats)</span>
+<p class="text-xs text-on-surface-variant">Summer items arriving soon</p>
+</div>
+<span class="font-bold text-tertiary">115%</span>
+</div>
+<div class="h-3 w-full bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-tertiary w-[100%] rounded-full"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Quick Action Grid -->
+<div class="col-span-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+<div class="bg-secondary p-8 rounded-3xl text-on-secondary flex flex-col justify-between shadow-lg shadow-secondary/20 h-48">
+<span class="material-symbols-outlined text-4xl">local_shipping</span>
+<div>
+<p class="font-bold text-lg leading-tight">Track <br/>Deliveries</p>
+<p class="text-xs mt-2 text-on-secondary/70">2 Incoming today</p>
+</div>
+</div>
+<div class="bg-tertiary-container p-8 rounded-3xl text-on-tertiary-container flex flex-col justify-between shadow-lg shadow-tertiary/20 h-48">
+<span class="material-symbols-outlined text-4xl">shopping_cart_checkout</span>
+<div>
+<p class="font-bold text-lg leading-tight">Stock <br/>Levels</p>
+<p class="text-xs mt-2 text-on-tertiary-container/70">4 Low stock alerts</p>
+</div>
+</div>
+<!-- Expanded views placeholders or additional relevant data can go here if needed, keeping grid balanced -->
+<div class="bg-surface-container-high p-8 rounded-3xl text-on-surface-variant flex flex-col justify-between shadow-sm h-48">
+<span class="material-symbols-outlined text-4xl">receipt_long</span>
+<div>
+<p class="font-bold text-lg leading-tight">Order <br/>History</p>
+<p class="text-xs mt-2">View 12 past orders</p>
+</div>
+</div>
+<div class="bg-surface-container-high p-8 rounded-3xl text-on-surface-variant flex flex-col justify-between shadow-sm h-48">
+<span class="material-symbols-outlined text-4xl">group</span>
+<div>
+<p class="font-bold text-lg leading-tight">Staff <br/>Requests</p>
+<p class="text-xs mt-2">8 New snack suggestions</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

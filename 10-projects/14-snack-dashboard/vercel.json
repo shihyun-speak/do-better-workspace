@@ -1,0 +1,7 @@
+{
+  "buildCommand": null,
+  "outputDirectory": null,
+  "rewrites": [
+    { "source": "/api/snacks", "destination": "/api/snacks" }
+  ]
+}

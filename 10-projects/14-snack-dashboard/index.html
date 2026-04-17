@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Happy Nyam Nyam</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        "surface": "#faf9f7",
+        "surface-dim": "#eeedeb",
+        "surface-container-lowest": "#ffffff",
+        "surface-container-low": "#f4f3f1",
+        "surface-container": "#eeedeb",
+        "surface-container-high": "#e5e4e2",
+        "surface-container-highest": "#dcdbd9",
+        "surface-variant": "#e5e4e2",
+        "on-surface": "#1a1a1a",
+        "on-surface-variant": "#6b6966",
+        "outline": "#8a8886",
+        "outline-variant": "#d0cfcd",
+        "primary": "#2d8a4e",
+        "primary-dim": "#236b3c",
+        "primary-container": "#d4f5e0",
+        "on-primary": "#ffffff",
+        "on-primary-container": "#0a3d1a",
+        "secondary": "#d4a017",
+        "secondary-dim": "#b58a12",
+        "secondary-container": "#fff4cc",
+        "on-secondary": "#ffffff",
+        "on-secondary-container": "#3a2e00",
+        "tertiary": "#e67e22",
+        "tertiary-container": "#fde8d0",
+        "on-tertiary": "#ffffff",
+        "error": "#c1272d",
+        "error-container": "#ffd6d6",
+        "on-error": "#ffffff",
+        "background": "#faf9f7",
+        "on-background": "#1a1a1a",
+        "inverse-surface": "#1a1a1a",
+        "inverse-on-surface": "#f4f3f1",
+      },
+      borderRadius: { DEFAULT: "0.25rem", lg: "0.5rem", xl: "0.75rem", full: "9999px" },
+      fontFamily: {
+        headline: ["Space Grotesk"],
+        body: ["Space Grotesk"],
+        label: ["Space Grotesk"]
+      }
+    },
+  },
+}
+</script>
+<style>
+.material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+.text-gradient { background: linear-gradient(135deg, #2d8a4e 0%, #4caf50 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.gradient-warning { background: linear-gradient(135deg, #e67e22 0%, #f39c12 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.gradient-error { background: linear-gradient(135deg, #c1272d 0%, #e74c3c 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.tab-active { color: #2d8a4e; border-bottom: 2px solid #2d8a4e; }
+.tab-inactive { color: #6b6966; border-bottom: 2px solid transparent; }
+.tab-inactive:hover { color: #1a1a1a; }
+@keyframes pulse-alert { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+.alert-pulse { animation: pulse-alert 2s ease-in-out infinite; }
+.card { border: 1px solid #e5e4e2; }
+</style>
+</head>
+<body class="bg-surface font-body text-on-surface">
+
+<!-- Top Nav -->
+<header class="sticky top-0 w-full z-50 bg-white/80 backdrop-blur-xl border-b border-outline-variant/30">
+  <div class="max-w-7xl mx-auto px-8 flex items-center justify-between h-16">
+    <div class="flex items-center gap-8">
+      <h1 class="text-2xl font-bold font-headline tracking-tight uppercase text-primary">Happy Nyam Nyam</h1>
+      <nav class="flex gap-1">
+        <a href="index.html" class="tab-active px-4 py-5 text-sm font-semibold transition-all">Dashboard</a>
+        <a href="analytics.html" class="tab-inactive px-4 py-5 text-sm font-semibold transition-all">Analytics</a>
+      </nav>
+    </div>
+    <div class="flex items-center gap-4">
+      <span id="data-status" class="text-[10px] font-bold py-1 px-2 bg-primary/10 text-primary rounded-full">Loading...</span>
+      <span class="text-[10px] text-on-surface-variant" id="last-updated"></span>
+      <button onclick="fetch('/api/cache/clear',{method:'POST'}).then(()=>location.reload())" class="p-1.5 hover:bg-surface-container-high rounded-lg transition-all text-on-surface-variant" title="Refresh">
+        <span class="material-symbols-outlined text-lg">refresh</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- Main Content -->
+<main class="max-w-7xl mx-auto px-8 py-8 space-y-6">
+
+  <!-- Budget Alert Banner -->
+  <div id="budget-alert" class="hidden"></div>
+
+  <!-- Two-Column Layout: Overview | Snack Request -->
+  <div class="grid grid-cols-12 gap-6">
+
+    <!-- LEFT: Budget Overview -->
+    <div class="col-span-12 lg:col-span-7 space-y-6">
+
+      <!-- Budget Gauge -->
+      <div class="bg-white p-8 rounded-2xl card relative overflow-hidden group">
+        <div id="budget-gauge" class="relative z-10">
+          <div class="animate-pulse space-y-4">
+            <div class="h-4 bg-surface-container-high rounded w-1/3"></div>
+            <div class="h-12 bg-surface-container-high rounded w-2/3"></div>
+            <div class="h-4 bg-surface-container-high rounded-full"></div>
+          </div>
+        </div>
+        <div class="absolute -right-12 -bottom-12 w-48 h-48 bg-primary/5 rounded-full blur-3xl group-hover:bg-primary/8 transition-all"></div>
+      </div>
+
+      <!-- Monthly Spending Trend -->
+      <div class="bg-white p-8 rounded-2xl card">
+        <div class="flex justify-between items-start mb-8">
+          <div>
+            <h3 class="font-headline font-bold text-xl text-on-surface tracking-tight">Monthly Spending</h3>
+            <p class="text-xs text-on-surface-variant">Office Snacks by month</p>
+          </div>
+        </div>
+        <div id="monthly-chart" class="h-48 flex items-end justify-between gap-3">
+          <div class="animate-pulse flex items-end justify-between gap-3 w-full h-full">
+            <div class="flex-1 bg-surface-container-high rounded-t-lg h-1/3"></div>
+            <div class="flex-1 bg-surface-container-high rounded-t-lg h-1/2"></div>
+            <div class="flex-1 bg-surface-container-high rounded-t-lg h-2/3"></div>
+            <div class="flex-1 bg-surface-container-high rounded-t-lg h-1/4"></div>
+            <div class="flex-1 bg-surface-container-high rounded-t-lg h-3/4"></div>
+            <div class="flex-1 bg-surface-container-high rounded-t-lg h-2/5"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- This Month Quick Stats -->
+      <div class="bg-white p-6 rounded-2xl card">
+        <div class="flex justify-between items-center mb-5">
+          <h3 class="font-body font-bold text-base text-on-surface">This Month</h3>
+          <span class="text-[9px] font-bold py-1 px-2 bg-primary/10 text-primary rounded-full uppercase">Office Snacks</span>
+        </div>
+        <div class="space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs text-on-surface-variant uppercase tracking-wider">Orders</span>
+            <span id="stat-orders" class="text-2xl font-extrabold font-headline text-on-surface">-</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-xs text-on-surface-variant uppercase tracking-wider">Avg / Order</span>
+            <span id="stat-avg" class="text-2xl font-extrabold font-headline text-on-surface">-</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Snack Request -->
+    <div class="col-span-12 lg:col-span-5 space-y-6">
+
+      <!-- Snack Request Form -->
+      <div class="bg-white p-6 rounded-2xl card">
+        <div class="flex items-center gap-2 mb-5">
+          <span class="material-symbols-outlined text-primary text-lg" style="font-variation-settings: 'FILL' 1;">add_shopping_cart</span>
+          <h3 class="font-body font-bold text-base text-on-surface">Request a Snack</h3>
+        </div>
+        <form id="snack-request-form" class="space-y-3">
+          <div>
+            <label class="text-xs text-on-surface-variant uppercase tracking-wider block mb-1">Your Name</label>
+            <input id="req-name" type="text" required placeholder="e.g. Jiwon" class="w-full bg-surface-container-low border border-outline-variant/30 rounded-lg text-xs py-2 px-3 focus:ring-1 focus:ring-primary/30 font-headline"/>
+          </div>
+          <div>
+            <label class="text-xs text-on-surface-variant uppercase tracking-wider block mb-1">Snack Name</label>
+            <input id="req-snack" type="text" required placeholder="e.g. 허니버터칩" class="w-full bg-surface-container-low border border-outline-variant/30 rounded-lg text-xs py-2 px-3 focus:ring-1 focus:ring-primary/30 font-headline"/>
+          </div>
+          <div>
+            <label class="text-xs text-on-surface-variant uppercase tracking-wider block mb-1">Purchase Link <span class="text-on-surface-variant/50">(optional)</span></label>
+            <input id="req-link" type="url" placeholder="https://..." class="w-full bg-surface-container-low border border-outline-variant/30 rounded-lg text-xs py-2 px-3 focus:ring-1 focus:ring-primary/30 font-body"/>
+          </div>
+          <button type="submit" class="w-full bg-primary text-on-primary py-2.5 rounded-lg font-headline font-bold text-xs uppercase tracking-wider hover:bg-primary-dim transition-all">
+            Send to #happy-nyam-nyam
+          </button>
+          <div id="req-status" class="hidden text-xs text-center py-2 rounded-lg font-headline"></div>
+        </form>
+      </div>
+
+      <!-- Popular Items Ranking -->
+      <div class="bg-white p-6 rounded-2xl card">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-body font-bold text-base text-on-surface">Popular Items</h3>
+          <span class="text-[9px] font-bold py-1 px-2 bg-secondary/10 text-secondary rounded-full uppercase">All Time</span>
+        </div>
+        <div id="popular-list" class="space-y-3">
+          <div class="animate-pulse space-y-3">
+            <div class="h-6 bg-surface-container-high rounded"></div>
+            <div class="h-6 bg-surface-container-high rounded"></div>
+            <div class="h-6 bg-surface-container-high rounded"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Restock Reminder -->
+      <div class="bg-white p-6 rounded-2xl card">
+        <div class="flex items-center gap-2 mb-4">
+          <span class="material-symbols-outlined text-tertiary text-lg">notifications_active</span>
+          <h3 class="font-body font-bold text-base text-on-surface">Restock Reminder</h3>
+        </div>
+        <div id="restock-list" class="space-y-3">
+          <div class="animate-pulse space-y-3">
+            <div class="h-6 bg-surface-container-high rounded"></div>
+            <div class="h-6 bg-surface-container-high rounded"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Purchases -->
+      <div class="bg-white p-6 rounded-2xl card">
+        <h3 class="font-body font-bold text-base text-on-surface mb-4">Recent Purchases</h3>
+        <div id="recent-list" class="space-y-4">
+          <div class="animate-pulse space-y-3">
+            <div class="h-10 bg-surface-container-high rounded-xl"></div>
+            <div class="h-10 bg-surface-container-high rounded-xl"></div>
+            <div class="h-10 bg-surface-container-high rounded-xl"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Purchase History (full width) -->
+  <div class="bg-white p-6 rounded-2xl card">
+      <div class="flex justify-between items-center mb-6">
+        <h3 class="font-body font-bold text-base text-on-surface">Purchase History</h3>
+        <div class="flex items-center gap-3">
+          <div class="relative">
+            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">search</span>
+            <input id="search-input" class="bg-surface-container-low border border-outline-variant/30 py-1.5 pl-9 pr-4 rounded-lg text-xs focus:ring-1 focus:ring-primary/30 w-48" placeholder="Search..." type="text"/>
+          </div>
+          <select id="event-filter" class="bg-surface-container-low border border-outline-variant/30 rounded-lg text-[10px] font-bold py-1.5 px-3 focus:ring-0">
+            <option value="">All Events</option>
+            <option value="Office Snacks">Office Snacks</option>
+            <option value="Bi-weekly">Bi-weekly</option>
+            <option value="Happy Hour">Happy Hour</option>
+            <option value="Other Events">Other Events</option>
+          </select>
+        </div>
+      </div>
+      <div id="history-table" class="overflow-x-auto max-h-96 overflow-y-auto">
+        <div class="animate-pulse space-y-3">
+          <div class="h-8 bg-surface-container-high rounded"></div>
+          <div class="h-8 bg-surface-container-high rounded"></div>
+          <div class="h-8 bg-surface-container-high rounded"></div>
+        </div>
+      </div>
+    </div>
+
+</main>
+
+<script src="shared.js"></script>
+<script>
+let allRecords = [];
+let officeSnacks = [];
+
+async function init() {
+  try {
+    const [all, os] = await Promise.all([fetchAllRecords(), fetchOfficeSnacks()]);
+    allRecords = all;
+    officeSnacks = os;
+
+    document.getElementById('data-status').textContent = `${all.length} records`;
+    document.getElementById('last-updated').textContent = new Date().toLocaleTimeString('ko-KR');
+
+    renderBudgetGauge();
+    renderBudgetAlert();
+    renderMonthlyChart();
+    renderQuickStats();
+    renderPopularItems();
+    renderRestockReminder();
+    renderRecentList();
+    renderHistoryTable();
+  } catch (err) {
+    console.error(err);
+    document.getElementById('data-status').textContent = 'Error';
+    document.getElementById('data-status').className = 'text-[10px] font-bold py-1 px-2 bg-error/10 text-error rounded-full';
+  }
+}
+
+// ── Budget Alert Banner ────────────────────────────────
+function renderBudgetAlert() {
+  const now = new Date();
+  const { start, end } = getMonthRange(now);
+  const thisMonth = officeSnacks.filter(r => r.date >= start && r.date <= end);
+  const spent = thisMonth.reduce((s, r) => s + r.price, 0);
+  const pct = Math.round((spent / CONFIG.BUDGET) * 100);
+  const el = document.getElementById('budget-alert');
+
+  if (pct >= 90) {
+    el.className = 'bg-error/10 border border-error/20 rounded-2xl p-4 flex items-center gap-4 alert-pulse';
+    el.innerHTML = `
+      <span class="material-symbols-outlined text-error text-2xl">emergency</span>
+      <div class="flex-1">
+        <p class="font-headline font-bold text-error">Budget Critical — ${pct}% used</p>
+        <p class="text-xs text-error/70">Only ${formatKRWFull(CONFIG.BUDGET - spent)} remaining. Consider pausing non-essential orders.</p>
+      </div>
+    `;
+  } else if (pct >= 70) {
+    el.className = 'bg-tertiary/10 border border-tertiary/20 rounded-2xl p-4 flex items-center gap-4';
+    el.innerHTML = `
+      <span class="material-symbols-outlined text-tertiary text-2xl">warning</span>
+      <div class="flex-1">
+        <p class="font-headline font-bold text-tertiary">Budget Caution — ${pct}% used</p>
+        <p class="text-xs text-tertiary/70">${formatKRWFull(CONFIG.BUDGET - spent)} remaining with ${getDaysRemaining()} days left.</p>
+      </div>
+    `;
+  }
+}
+
+// ── Budget Gauge ───────────────────────────────────────
+function renderBudgetGauge() {
+  const now = new Date();
+  const { start, end } = getMonthRange(now);
+  const thisMonth = officeSnacks.filter(r => r.date >= start && r.date <= end);
+  const spent = thisMonth.reduce((sum, r) => sum + r.price, 0);
+  const budget = CONFIG.BUDGET;
+  const remaining = budget - spent;
+  const pct = Math.round((spent / budget) * 100);
+  const daysLeft = getDaysRemaining();
+  const status = getBudgetStatus(pct);
+
+  const gradientClass = pct >= 90 ? 'gradient-error' : pct >= 70 ? 'gradient-warning' : 'text-gradient';
+  const barColor = pct >= 90
+    ? 'bg-gradient-to-r from-error to-primary-container'
+    : pct >= 70
+      ? 'bg-gradient-to-r from-tertiary to-tertiary-container'
+      : 'bg-gradient-to-r from-primary to-secondary';
+
+  document.getElementById('budget-gauge').innerHTML = `
+    <h3 class="font-headline font-bold text-[10px] uppercase tracking-[0.15em] text-on-surface-variant mb-6">Budget Gauge</h3>
+    <div class="flex items-baseline gap-2 mb-1">
+      <span class="text-5xl font-extrabold font-headline tracking-tighter ${gradientClass}">${formatKRW(spent)}</span>
+      <span class="text-on-surface-variant font-medium text-sm">/ ${formatKRW(budget)}</span>
+    </div>
+    <p class="text-xs text-on-surface-variant mb-6">${pct}% of monthly budget utilized</p>
+    <div class="w-full h-3 bg-surface-container-high rounded-full overflow-hidden mb-6">
+      <div class="h-full ${barColor} rounded-full transition-all duration-700" style="width:${Math.min(pct, 100)}%"></div>
+    </div>
+    <div class="flex justify-between items-center">
+      <div class="flex items-center gap-2">
+        <div class="w-2 h-2 rounded-full ${pct >= 90 ? 'bg-error' : pct >= 70 ? 'bg-tertiary' : 'bg-primary'}"></div>
+        <span class="text-[10px] font-bold">Remaining: ${formatKRWFull(remaining)}</span>
+      </div>
+      <span class="text-[10px] font-bold py-1 px-3 ${status.bgClass} ${status.textClass} rounded-full">${daysLeft} Days Left</span>
+    </div>
+  `;
+}
+
+// ── Monthly Chart ──────────────────────────────────────
+function renderMonthlyChart() {
+  const monthly = groupByMonth(officeSnacks);
+  const last12 = monthly.slice(-12);
+  if (last12.length === 0) { document.getElementById('monthly-chart').innerHTML = '<p class="text-on-surface-variant text-sm">No data</p>'; return; }
+
+  const maxSpend = Math.max(...last12.map(m => m.total));
+  const budgetLineHeight = Math.min((CONFIG.BUDGET / maxSpend) * 100, 100);
+
+  let html = '';
+  last12.forEach((m, i) => {
+    const heightPct = (m.total / maxSpend) * 100;
+    const gen = getGeneration(m.records[0]?.date);
+    const budget = getBudgetForGen(gen);
+    const overBudget = m.total > budget;
+    const monthLabel = getMonthLabel(m.records[0]?.date);
+    const barColor = overBudget ? '#c1272d' : (i % 2 === 0 ? '#2d8a4e' : '#d4a017');
+
+    html += `
+      <div class="flex-1 flex flex-col items-end min-w-0" style="height:100%">
+        <div class="w-full flex-1 flex items-end">
+          <div class="w-full rounded-t relative group hover:opacity-80 transition-all cursor-pointer"
+               style="height:${heightPct}%; background:${barColor}; opacity:${overBudget ? 1 : 0.8}">
+            <div class="absolute -top-10 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 bg-inverse-surface text-inverse-on-surface text-[10px] py-1 px-2 rounded transition-all whitespace-nowrap z-10">
+              ${formatKRWFull(m.total)}
+            </div>
+          </div>
+        </div>
+        <span class="text-[8px] font-bold text-on-surface-variant uppercase leading-tight text-center mt-2 w-full">${monthLabel}<br/>${gen}</span>
+      </div>
+    `;
+  });
+
+  document.getElementById('monthly-chart').innerHTML = `
+    <div class="relative w-full h-full flex items-end justify-between gap-2">
+      <div class="absolute w-full border-t-2 border-dashed border-tertiary/40 z-10" style="bottom:${budgetLineHeight}%">
+        <span class="absolute -top-4 right-0 text-[8px] font-bold text-tertiary">${formatKRW(CONFIG.BUDGET)}</span>
+      </div>
+      ${html}
+    </div>
+  `;
+}
+
+// ── Category Pie ───────────────────────────────────────
+const CAT_COLORS = {
+  '정기구독(스낵24)': '#2d8a4e', '음료': '#d4a017', '과자/스낵': '#e67e22',
+  '과일': '#27ae60', '유제품/건강': '#8e7cc3', '계절간식': '#e67e22',
+  '식사/간편식': '#bdc3c7', '혼합주문': '#95a5a6', '기타': '#7f8c8d',
+};
+
+function renderCategoryPie() {
+  const period = document.getElementById('cat-period').value;
+  let records = officeSnacks;
+  if (period === 'current') {
+    const { start, end } = getMonthRange(new Date());
+    records = officeSnacks.filter(r => r.date >= start && r.date <= end);
+  } else if (period === 'last') {
+    const prev = new Date(); prev.setMonth(prev.getMonth() - 1);
+    const { start, end } = getMonthRange(prev);
+    records = officeSnacks.filter(r => r.date >= start && r.date <= end);
+  } else if (period !== 'all') {
+    const cutoff = new Date(); cutoff.setMonth(cutoff.getMonth() - parseInt(period));
+    records = officeSnacks.filter(r => r.date >= cutoff.toISOString().substring(0, 10));
+  }
+
+  const categories = groupByCategoryDetected(records);
+  const sorted = Object.entries(categories).sort((a, b) => b[1].total - a[1].total);
+  const total = records.reduce((s, r) => s + r.price, 0);
+
+  if (total === 0) { document.getElementById('cat-pie-total').textContent = '₩0'; return; }
+  document.getElementById('cat-pie-total').textContent = formatKRW(total);
+
+  const radius = 40, circumference = 2 * Math.PI * radius;
+  let offset = 0, circles = '';
+  sorted.forEach(([name, data]) => {
+    const pct = data.total / total;
+    const dashLen = pct * circumference + 0.3;
+    const color = CAT_COLORS[name] || '#95a5a6';
+    circles += `<circle cx="50" cy="50" fill="transparent" r="${radius}" stroke="${color}" stroke-width="12" stroke-linecap="butt" stroke-dasharray="${dashLen.toFixed(2)} ${Math.max(0, circumference - dashLen).toFixed(2)}" stroke-dashoffset="${(-offset).toFixed(2)}"/>`;
+    offset += pct * circumference;
+  });
+  document.getElementById('cat-pie').innerHTML = circles;
+
+  // Legend — top 6, merge remaining into existing "기타" or add new
+  const topCats = sorted.slice(0, 6);
+  const rest = sorted.slice(6);
+  if (rest.length > 0) {
+    const restTotal = rest.reduce((s, [,d]) => s + d.total, 0);
+    const existingEtc = topCats.findIndex(([n]) => n === '기타');
+    if (existingEtc >= 0) {
+      topCats[existingEtc][1] = { total: topCats[existingEtc][1].total + restTotal };
+    } else {
+      topCats.push(['기타', { total: restTotal }]);
+    }
+  }
+
+  document.getElementById('cat-pie-legend').innerHTML = topCats.map(([name, data]) => {
+    const pct = Math.round((data.total / total) * 100);
+    const color = CAT_COLORS[name] || '#7f8c8d';
+    return `<div class="flex items-center justify-between"><div class="flex items-center gap-2"><div class="w-2 h-2 rounded-full shrink-0" style="background:${color}"></div><span class="text-sm font-medium">${name}</span></div><div class="text-right"><span class="text-sm font-bold">${pct}%</span> <span class="text-[10px] text-on-surface-variant">${formatKRW(data.total)}</span></div></div>`;
+  }).join('');
+}
+
+// ── Quick Stats ────────────────────────────────────────
+function renderQuickStats() {
+  const now = new Date();
+  const { start, end } = getMonthRange(now);
+  const thisMonth = officeSnacks.filter(r => r.date >= start && r.date <= end);
+  const count = thisMonth.length;
+  const total = thisMonth.reduce((s, r) => s + r.price, 0);
+  const avg = count > 0 ? Math.round(total / count) : 0;
+  document.getElementById('stat-orders').textContent = count;
+  document.getElementById('stat-avg').textContent = formatKRWFull(avg);
+}
+
+// ── Popular Items ──────────────────────────────────────
+function renderPopularItems() {
+  const freq = {};
+  officeSnacks.forEach(r => {
+    const items = r.name.split(',').map(s => s.trim()).filter(s => s && !s.match(/스낵24|대량|주문|구매|추가|정산|이용|이것저것/));
+    items.forEach(item => {
+      const key = normalizeItemName(item.replace(/\s+/g, ' ').substring(0, 20));
+      if (key.length < 2) return;
+      freq[key] = (freq[key] || 0) + 1;
+    });
+  });
+  const top = Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 5);
+
+  document.getElementById('popular-list').innerHTML = top.map(([name, count], i) => {
+    const medals = ['🥇', '🥈', '🥉', '4.', '5.'];
+    const displayName = name.length > 12 ? name.substring(0, 12) + '...' : name;
+    return `<div class="flex items-center justify-between"><div class="flex items-center gap-2"><span class="text-xs w-5">${medals[i]}</span><span class="text-sm font-medium">${displayName}</span></div><span class="text-[10px] text-on-surface-variant font-bold">${count}x</span></div>`;
+  }).join('');
+}
+
+// ── Restock Reminder ───────────────────────────────────
+function renderRestockReminder() {
+  const now = new Date();
+  const twoWeeksAgo = new Date(now - 14 * 24 * 60 * 60 * 1000).toISOString().substring(0, 10);
+
+  // Count total occurrences of each item across ALL records
+  const totalCount = {};
+  const lastSeen = {};
+  const recentItems = new Set();
+
+  officeSnacks.forEach(r => {
+    const items = r.name.split(',').map(s => s.trim()).filter(s => s && !s.match(/스낵24|대량|주문|구매|추가|정산|이용|이것저것/));
+    items.forEach(item => {
+      const key = normalizeItemName(item.replace(/\s+/g, ' ').substring(0, 20));
+      if (key.length < 2) return;
+      totalCount[key] = (totalCount[key] || 0) + 1;
+      if (!lastSeen[key] || r.date > lastSeen[key]) lastSeen[key] = r.date;
+      if (r.date >= twoWeeksAgo) recentItems.add(key);
+    });
+  });
+
+  // Only items ordered 3+ times AND not ordered in last 2 weeks
+  const needRestock = Object.entries(lastSeen)
+    .filter(([key]) => !recentItems.has(key) && (totalCount[key] || 0) >= 3)
+    .sort((a, b) => b[1].localeCompare(a[1]))
+    .slice(0, 5);
+
+  if (needRestock.length === 0) {
+    document.getElementById('restock-list').innerHTML = '<p class="text-xs text-on-surface-variant">All stocked up! No items overdue.</p>';
+    return;
+  }
+
+  document.getElementById('restock-list').innerHTML = needRestock.map(([name, lastDate]) => {
+    const daysAgo = Math.round((now - new Date(lastDate)) / (24 * 60 * 60 * 1000));
+    return `<div class="flex items-center justify-between"><span class="text-xs font-medium">${name}</span><span class="text-[10px] text-tertiary font-bold">${daysAgo}d ago</span></div>`;
+  }).join('');
+}
+
+// ── Recent Purchases ───────────────────────────────────
+function renderRecentList() {
+  const recent = allRecords.slice(0, 5);
+  const icons = { 'Office Snacks': 'shopping_bag', 'Bi-weekly': 'restaurant', 'Happy Hour': 'local_bar', 'Other Events': 'celebration' };
+
+  document.getElementById('recent-list').innerHTML = recent.map(r => {
+    const icon = icons[r.event] || 'receipt_long';
+    return `<div class="flex items-center gap-3"><div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0"><span class="material-symbols-outlined text-sm">${icon}</span></div><div class="flex-1 min-w-0"><p class="text-xs font-bold truncate">${r.name}</p><p class="text-[10px] text-on-surface-variant">${formatDate(r.date)}</p></div><span class="text-[10px] font-bold text-on-surface-variant shrink-0">${formatKRWFull(r.price)}</span></div>`;
+  }).join('');
+}
+
+// ── Purchase History ───────────────────────────────────
+function renderHistoryTable(filterText = '', filterEvent = '') {
+  let filtered = allRecords;
+  if (filterText) { const q = filterText.toLowerCase(); filtered = filtered.filter(r => r.name.toLowerCase().includes(q) || r.vendor.toLowerCase().includes(q)); }
+  if (filterEvent) filtered = filtered.filter(r => r.event === filterEvent);
+
+  if (filtered.length === 0) { document.getElementById('history-table').innerHTML = '<p class="text-on-surface-variant text-xs py-4">No matching records</p>'; return; }
+
+  const eventColors = { 'Office Snacks': 'primary', 'Bi-weekly': 'secondary', 'Happy Hour': 'tertiary' };
+  document.getElementById('history-table').innerHTML = `
+    <table class="w-full"><thead><tr class="text-left text-[9px] uppercase tracking-widest text-on-surface-variant font-bold">
+      <th class="pb-3 pr-3">Date</th><th class="pb-3 pr-3">Item</th><th class="pb-3 pr-3 text-right">Price</th><th class="pb-3 pr-3">Event</th><th class="pb-3">Vendor</th>
+    </tr></thead><tbody>${filtered.map(r => {
+      const c = eventColors[r.event] || 'outline';
+      return `<tr class="border-t border-outline-variant/10 hover:bg-surface-container-low/50"><td class="py-2.5 pr-3 text-xs text-on-surface-variant whitespace-nowrap">${formatDate(r.date)}</td><td class="py-2.5 pr-3 text-xs font-medium max-w-[200px] truncate">${r.name}</td><td class="py-2.5 pr-3 text-xs font-bold text-right whitespace-nowrap">${formatKRWFull(r.price)}</td><td class="py-2.5 pr-3"><span class="text-[9px] font-bold py-0.5 px-2 bg-${c}/10 text-${c} rounded-full">${r.event}</span></td><td class="py-2.5 text-xs text-on-surface-variant">${r.vendor}</td></tr>`;
+    }).join('')}</tbody></table>`;
+}
+
+// ── Events ─────────────────────────────────────────────
+document.getElementById('search-input').addEventListener('input', (e) => renderHistoryTable(e.target.value, document.getElementById('event-filter').value));
+document.getElementById('event-filter').addEventListener('change', (e) => renderHistoryTable(document.getElementById('search-input').value, e.target.value));
+
+// ── Snack Request Form ─────────────────────────────────
+document.getElementById('snack-request-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const status = document.getElementById('req-status');
+  const btn = e.target.querySelector('button[type="submit"]');
+  const name = document.getElementById('req-name').value.trim();
+  const snack = document.getElementById('req-snack').value.trim();
+  const link = document.getElementById('req-link').value.trim();
+
+  btn.disabled = true;
+  btn.textContent = 'Sending...';
+
+  try {
+    const res = await fetch('/api/request', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, snack, link }),
+    });
+    const data = await res.json();
+
+    if (data.ok) {
+      status.className = 'text-xs text-center py-2 rounded-lg font-headline bg-secondary/10 text-secondary';
+      status.textContent = 'Sent to #happy-nyam-nyam!';
+      e.target.reset();
+    } else {
+      status.className = 'text-xs text-center py-2 rounded-lg font-headline bg-error/10 text-error';
+      status.textContent = data.error || 'Failed to send';
+    }
+  } catch (err) {
+    status.className = 'text-xs text-center py-2 rounded-lg font-headline bg-error/10 text-error';
+    status.textContent = 'Network error';
+  }
+
+  status.classList.remove('hidden');
+  btn.disabled = false;
+  btn.textContent = 'Send to #happy-nyam-nyam';
+  setTimeout(() => status.classList.add('hidden'), 5000);
+});
+
+init();
+</script>
+</body>
+</html>

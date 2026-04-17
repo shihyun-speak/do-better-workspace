@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html class="light" lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Analytics | Kinetic Pantry</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        "surface": "#faf9f7",
+        "surface-dim": "#eeedeb",
+        "surface-container-lowest": "#ffffff",
+        "surface-container-low": "#f4f3f1",
+        "surface-container": "#eeedeb",
+        "surface-container-high": "#e5e4e2",
+        "surface-container-highest": "#dcdbd9",
+        "surface-variant": "#e5e4e2",
+        "on-surface": "#1a1a1a",
+        "on-surface-variant": "#6b6966",
+        "outline": "#8a8886",
+        "outline-variant": "#d0cfcd",
+        "primary": "#2d8a4e",
+        "primary-dim": "#236b3c",
+        "primary-container": "#d4f5e0",
+        "on-primary": "#ffffff",
+        "on-primary-container": "#0a3d1a",
+        "secondary": "#d4a017",
+        "secondary-dim": "#b58a12",
+        "secondary-container": "#fff4cc",
+        "on-secondary": "#ffffff",
+        "on-secondary-container": "#3a2e00",
+        "tertiary": "#e67e22",
+        "tertiary-container": "#fde8d0",
+        "on-tertiary": "#ffffff",
+        "error": "#c1272d",
+        "error-container": "#ffd6d6",
+        "on-error": "#ffffff",
+        "background": "#faf9f7",
+        "on-background": "#1a1a1a",
+        "inverse-surface": "#1a1a1a",
+        "inverse-on-surface": "#f4f3f1",
+      },
+      borderRadius: { DEFAULT: "0.25rem", lg: "0.5rem", xl: "0.75rem", full: "9999px" },
+      fontFamily: {
+        headline: ["Space Grotesk"],
+        body: ["Space Grotesk"],
+        label: ["Space Grotesk"]
+      }
+    },
+  },
+}
+</script>
+<style>
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  vertical-align: middle;
+}
+.glass-card {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(24px);
+}
+.text-gradient {
+  background: linear-gradient(135deg, #2d8a4e 0%, #4caf50 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.tab-active { color: #2d8a4e; border-bottom: 2px solid #2d8a4e; }
+.tab-inactive { color: #6b6966; border-bottom: 2px solid transparent; }
+.tab-inactive:hover { color: #1a1a1a; }
+.card { border: 1px solid #e5e4e2; }
+</style>
+</head>
+<body class="bg-surface text-on-surface font-body">
+
+<!-- Top Nav -->
+<header class="sticky top-0 w-full z-50 bg-white/80 backdrop-blur-xl border-b border-outline-variant/30">
+  <div class="max-w-7xl mx-auto px-8 flex items-center justify-between h-16">
+    <div class="flex items-center gap-8">
+      <h1 class="text-2xl font-bold font-headline tracking-tight uppercase text-primary">Happy Nyam Nyam</h1>
+      <nav class="flex gap-1">
+        <a href="index.html" class="tab-inactive px-4 py-5 text-sm font-semibold transition-all">Dashboard</a>
+        <a href="analytics.html" class="tab-active px-4 py-5 text-sm font-semibold transition-all">Analytics</a>
+      </nav>
+    </div>
+    <div class="flex items-center gap-4">
+      <span id="data-status" class="text-[10px] font-bold py-1 px-2 bg-primary/10 text-primary rounded-full">Loading...</span>
+      <select id="period-filter" class="bg-surface-container-low border border-outline-variant/20 rounded-full text-[10px] font-bold py-1.5 px-4 focus:ring-0 text-on-surface-variant">
+        <option value="current" selected>This Month</option>
+        <option value="last">Last Month</option>
+        <option value="3">Last 3 Months</option>
+        <option value="6">Last 6 Months</option>
+        <option value="12">Last 12 Months</option>
+        <option value="all">All Time</option>
+      </select>
+      <button onclick="fetch('/api/cache/clear',{method:'POST'}).then(()=>location.reload())" class="p-1.5 hover:bg-surface-container-high rounded-lg transition-all text-on-surface-variant" title="Refresh">
+        <span class="material-symbols-outlined text-lg">refresh</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-7xl mx-auto px-8 py-8 space-y-8">
+    <!-- Hero -->
+    <div>
+      <h2 class="text-4xl font-extrabold font-headline tracking-tighter text-on-background">Spending Analysis</h2>
+      <p class="text-on-surface-variant mt-1">Deep dive into the office snack spending patterns.</p>
+    </div>
+
+    <!-- Bento Grid -->
+    <div class="grid grid-cols-12 gap-6">
+
+      <!-- Donut Chart (grouping toggle) -->
+      <div class="col-span-12 lg:col-span-8 bg-white rounded-2xl p-8 card flex flex-col md:flex-row gap-12 items-center">
+        <div class="relative w-56 h-56 flex-shrink-0">
+          <svg id="donut-chart" class="w-full h-full transform -rotate-90" viewBox="0 0 100 100"></svg>
+          <div class="absolute inset-0 flex flex-col items-center justify-center">
+            <span id="donut-total" class="text-3xl font-extrabold font-headline">-</span>
+            <span class="text-[9px] font-label text-on-surface-variant uppercase tracking-widest">Total Spent</span>
+          </div>
+        </div>
+        <div class="flex-1 space-y-5">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xl font-bold font-headline">Breakdown</h3>
+            <select id="donut-group" class="bg-surface-container-low border border-outline-variant/20 rounded-full text-[10px] font-bold py-1.5 px-4 focus:ring-0 text-on-surface-variant">
+              <option value="category" selected>By Category</option>
+              <option value="vendor">By Vendor</option>
+              <option value="event">By Event</option>
+            </select>
+          </div>
+          <div id="donut-legend" class="grid grid-cols-2 gap-y-3 gap-x-6">
+            <div class="animate-pulse h-8 bg-surface-container-high rounded"></div>
+            <div class="animate-pulse h-8 bg-surface-container-high rounded"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Summary Card -->
+      <div class="col-span-12 lg:col-span-4 glass-card rounded-3xl p-8 shadow-xl shadow-primary/5 flex flex-col relative overflow-hidden">
+        <div class="absolute -top-12 -right-12 w-32 h-32 bg-primary/10 rounded-full blur-3xl"></div>
+        <div class="flex items-center justify-between mb-8">
+          <span class="bg-primary/10 text-primary px-3 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase">Summary</span>
+          <span class="material-symbols-outlined text-primary">insights</span>
+        </div>
+        <h3 class="text-xl font-bold font-headline mb-6 leading-tight">Key Metrics</h3>
+        <div id="summary-stats" class="space-y-5 flex-1">
+          <div class="animate-pulse space-y-4">
+            <div class="h-12 bg-surface-container-high rounded-xl"></div>
+            <div class="h-12 bg-surface-container-high rounded-xl"></div>
+            <div class="h-12 bg-surface-container-high rounded-xl"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Event Type Breakdown -->
+      <div class="col-span-12 bg-white rounded-2xl p-8 card">
+        <div class="flex items-center justify-between mb-8">
+          <h3 class="text-2xl font-bold font-headline">Spending by Event Type</h3>
+          <div class="flex items-center gap-4">
+            <span class="flex items-center gap-1 text-xs text-on-surface-variant">
+              <div class="w-2 h-2 rounded-full bg-surface-container-high"></div> Budget
+            </span>
+            <span class="flex items-center gap-1 text-xs text-on-surface-variant">
+              <div class="w-2 h-2 rounded-full bg-primary"></div> Actual
+            </span>
+          </div>
+        </div>
+        <div id="event-bars" class="grid grid-cols-1 md:grid-cols-2 gap-y-8 gap-x-16">
+          <div class="animate-pulse space-y-3">
+            <div class="h-8 bg-surface-container-high rounded"></div>
+            <div class="h-3 bg-surface-container-high rounded-full"></div>
+          </div>
+          <div class="animate-pulse space-y-3">
+            <div class="h-8 bg-surface-container-high rounded"></div>
+            <div class="h-3 bg-surface-container-high rounded-full"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Generation Comparison -->
+      <div class="col-span-12 lg:col-span-6 bg-white rounded-2xl p-8 card">
+        <h3 class="text-xl font-bold font-headline mb-6">Generation Comparison</h3>
+        <p class="text-sm text-on-surface-variant mb-6">Average monthly spend per 쩝쩝박사 generation</p>
+        <div id="gen-comparison" class="space-y-4">
+          <div class="animate-pulse space-y-3">
+            <div class="h-8 bg-surface-container-high rounded"></div>
+            <div class="h-8 bg-surface-container-high rounded"></div>
+            <div class="h-8 bg-surface-container-high rounded"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Per-Capita Cost -->
+      <div class="col-span-12 lg:col-span-6 bg-white rounded-2xl p-8 card">
+        <div class="flex items-center justify-between mb-6">
+          <h3 class="text-xl font-bold font-headline">Monthly Per-Capita</h3>
+          <span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">person</span>
+        </div>
+        <p class="text-sm text-on-surface-variant mb-6">Office Snacks cost per person (headcount estimate)</p>
+        <div id="per-capita" class="space-y-4">
+          <div class="animate-pulse h-20 bg-surface-container-high rounded-xl"></div>
+        </div>
+        <div class="mt-6">
+          <label class="text-xs text-on-surface-variant font-bold block mb-2">Headcount</label>
+          <input id="headcount-input" type="number" value="30" min="1" max="200" class="bg-surface-container-low border-none rounded-lg text-sm py-2 px-4 w-24 focus:ring-2 focus:ring-primary/20"/>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<script src="shared.js"></script>
+<script>
+// ── State ──────────────────────────────────────────────
+let allRecords = [];
+let officeSnacks = [];
+
+const VENDOR_COLORS = ['#0846ed', '#702ae1', '#ff9560', '#859aff', '#9c3f00', '#dedcdc', '#afadac', '#5c5b5b'];
+
+// ── Init ───────────────────────────────────────────────
+async function init() {
+  try {
+    const [all, os] = await Promise.all([fetchAllRecords(), fetchOfficeSnacks()]);
+    allRecords = all;
+    officeSnacks = os;
+
+    document.getElementById('data-status').textContent = `${all.length} records`;
+    render();
+  } catch (err) {
+    console.error(err);
+    document.getElementById('data-status').textContent = 'Error';
+    document.getElementById('data-status').className = 'text-[10px] font-bold py-1 px-2 bg-error/10 text-error rounded-full';
+  }
+}
+
+function getFilteredRecords() {
+  const val = document.getElementById('period-filter').value;
+
+  if (val === 'current') {
+    const { start, end } = getMonthRange(new Date());
+    return { all: allRecords.filter(r => r.date >= start && r.date <= end), os: officeSnacks.filter(r => r.date >= start && r.date <= end) };
+  }
+  if (val === 'last') {
+    const prev = new Date(); prev.setMonth(prev.getMonth() - 1);
+    const { start, end } = getMonthRange(prev);
+    return { all: allRecords.filter(r => r.date >= start && r.date <= end), os: officeSnacks.filter(r => r.date >= start && r.date <= end) };
+  }
+
+  const months = parseInt(val);
+  if (!months || isNaN(months)) return { all: allRecords, os: officeSnacks };
+
+  const cutoff = new Date();
+  cutoff.setMonth(cutoff.getMonth() - months);
+  const cutoffStr = cutoff.toISOString().substring(0, 10);
+
+  return {
+    all: allRecords.filter(r => r.date >= cutoffStr),
+    os: officeSnacks.filter(r => r.date >= cutoffStr),
+  };
+}
+
+function render() {
+  const { all, os } = getFilteredRecords();
+  renderDonutChart(os);
+  renderSummaryStats(all, os);
+  renderEventBars(all);
+  renderGenComparison(os);
+  renderPerCapita(os);
+}
+
+// ── Donut Chart (multi-group) ───────────────────────────
+const DONUT_COLORS = ['#2d8a4e', '#d4a017', '#e67e22', '#1a6b3c', '#8e7cc3', '#f39c12', '#7dcea0', '#95a5a6'];
+
+function renderDonutChart(records) {
+  const groupBy = document.getElementById('donut-group').value;
+  let grouped;
+
+  if (groupBy === 'category') {
+    grouped = groupByCategoryDetected(records);
+  } else if (groupBy === 'event') {
+    const g = {};
+    records.forEach(r => {
+      const e = r.event || 'Other';
+      if (!g[e]) g[e] = { total: 0, count: 0 };
+      g[e].total += r.price;
+      g[e].count++;
+    });
+    grouped = g;
+  } else {
+    grouped = groupByVendor(records);
+  }
+
+  const sorted = Object.entries(grouped).sort((a, b) => b[1].total - a[1].total);
+  const total = records.reduce((s, r) => s + r.price, 0);
+
+  if (total === 0) {
+    document.getElementById('donut-total').textContent = '₩0';
+    document.getElementById('donut-chart').innerHTML = '';
+    document.getElementById('donut-legend').innerHTML = '';
+    return;
+  }
+
+  document.getElementById('donut-total').textContent = formatKRW(total);
+
+  const r = 40;
+  const circumference = 2 * Math.PI * r;
+  let offset = 0;
+  let circles = '';
+
+  sorted.forEach(([name, data], i) => {
+    const pct = data.total / total;
+    const dashLen = pct * circumference + 0.3;
+    const color = DONUT_COLORS[i % DONUT_COLORS.length];
+    circles += `<circle cx="50" cy="50" fill="transparent" r="${r}" stroke="${color}" stroke-width="12" stroke-linecap="butt" stroke-dasharray="${dashLen.toFixed(2)} ${Math.max(0, circumference - dashLen).toFixed(2)}" stroke-dashoffset="${(-offset).toFixed(2)}"/>`;
+    offset += pct * circumference;
+  });
+
+  document.getElementById('donut-chart').innerHTML = circles;
+
+  // Legend — top 6, rest as "기타"
+  const top = sorted.slice(0, 6);
+  const rest = sorted.slice(6);
+  if (rest.length > 0) top.push(['기타', { total: rest.reduce((s, [,d]) => s + d.total, 0) }]);
+
+  document.getElementById('donut-legend').innerHTML = top.map(([name, data], i) => {
+    const pct = Math.round((data.total / total) * 100);
+    const color = DONUT_COLORS[i % DONUT_COLORS.length];
+    return `<div class="space-y-0.5"><div class="flex items-center gap-2"><div class="w-2.5 h-2.5 rounded-full" style="background:${color}"></div><span class="font-bold text-xs">${name}</span></div><p class="text-[10px] text-on-surface-variant pl-5">${pct}% · ${formatKRWFull(data.total)}</p></div>`;
+  }).join('');
+}
+
+// ── Summary Stats ──────────────────────────────────────
+function renderSummaryStats(all, os) {
+  const totalAll = all.reduce((s, r) => s + r.price, 0);
+  const totalOS = os.reduce((s, r) => s + r.price, 0);
+  const avgPerMonth = groupByMonth(os);
+  const monthlyAvg = avgPerMonth.length > 0
+    ? Math.round(avgPerMonth.reduce((s, m) => s + m.total, 0) / avgPerMonth.length)
+    : 0;
+
+  document.getElementById('summary-stats').innerHTML = `
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+        <span class="material-symbols-outlined text-primary text-lg">payments</span>
+      </div>
+      <div>
+        <p class="text-xs text-on-surface-variant">Total Spend (All Events)</p>
+        <p class="text-lg font-extrabold font-headline">${formatKRWFull(totalAll)}</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center">
+        <span class="material-symbols-outlined text-secondary text-lg">shopping_bag</span>
+      </div>
+      <div>
+        <p class="text-xs text-on-surface-variant">Office Snacks Only</p>
+        <p class="text-lg font-extrabold font-headline">${formatKRWFull(totalOS)}</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-lg bg-tertiary/10 flex items-center justify-center">
+        <span class="material-symbols-outlined text-tertiary text-lg">avg_pace</span>
+      </div>
+      <div>
+        <p class="text-xs text-on-surface-variant">Monthly Avg (Office Snacks)</p>
+        <p class="text-lg font-extrabold font-headline">${formatKRWFull(monthlyAvg)}</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center">
+        <span class="material-symbols-outlined text-on-surface-variant text-lg">receipt</span>
+      </div>
+      <div>
+        <p class="text-xs text-on-surface-variant">Total Orders</p>
+        <p class="text-lg font-extrabold font-headline">${all.length}</p>
+      </div>
+    </div>
+  `;
+}
+
+// ── Event Type Bars ────────────────────────────────────
+function renderEventBars(records) {
+  const events = {};
+  records.forEach(r => {
+    const e = r.event || 'Other';
+    if (!events[e]) events[e] = { total: 0, count: 0 };
+    events[e].total += r.price;
+    events[e].count++;
+  });
+
+  const sorted = Object.entries(events).sort((a, b) => b[1].total - a[1].total);
+  const maxSpend = Math.max(...sorted.map(([, d]) => d.total));
+  const eventColors = { 'Office Snacks': 'primary', 'Bi-weekly': 'secondary', 'Happy Hour': 'tertiary', 'Other Events': 'outline' };
+
+  let html = '';
+  sorted.forEach(([name, data]) => {
+    const pct = Math.round((data.total / maxSpend) * 100);
+    const color = eventColors[name] || 'outline';
+    html += `
+      <div class="space-y-3">
+        <div class="flex justify-between items-end">
+          <div>
+            <span class="font-bold font-headline">${name}</span>
+            <p class="text-xs text-on-surface-variant">${data.count} orders</p>
+          </div>
+          <span class="font-bold text-${color}">${formatKRWFull(data.total)}</span>
+        </div>
+        <div class="h-3 w-full bg-surface-container-high rounded-full overflow-hidden">
+          <div class="h-full bg-gradient-to-r from-${color} to-${color === 'primary' ? 'secondary' : color + '-container'} rounded-full" style="width:${pct}%"></div>
+        </div>
+      </div>
+    `;
+  });
+  document.getElementById('event-bars').innerHTML = html;
+}
+
+// ── Generation Comparison ──────────────────────────────
+function renderGenComparison(records) {
+  const genData = {};
+  records.forEach(r => {
+    const gen = getGeneration(r.date);
+    if (gen === '미정') return;
+    if (!genData[gen]) genData[gen] = { total: 0, months: new Set() };
+    genData[gen].total += r.price;
+    genData[gen].months.add(getYearMonth(r.date));
+  });
+
+  const entries = Object.entries(genData)
+    .map(([name, data]) => ({
+      name,
+      total: data.total,
+      monthCount: data.months.size,
+      avgMonthly: Math.round(data.total / data.months.size),
+      budget: getBudgetForGen(name),
+    }))
+    .sort((a, b) => {
+      const aNum = parseInt(a.name);
+      const bNum = parseInt(b.name);
+      return aNum - bNum;
+    });
+
+  const maxAvg = Math.max(...entries.map(e => e.avgMonthly));
+
+  let html = '';
+  entries.forEach((e, i) => {
+    const pct = Math.round((e.avgMonthly / maxAvg) * 100);
+    const budgetPct = Math.round((e.avgMonthly / e.budget) * 100);
+    const overBudget = budgetPct > 100;
+    const color = CONFIG.GEN_COLORS[i % CONFIG.GEN_COLORS.length];
+
+    html += `
+      <div class="flex items-center gap-4">
+        <span class="text-sm font-bold w-8 shrink-0">${e.name}</span>
+        <div class="flex-1">
+          <div class="h-6 bg-surface-container-high rounded-full overflow-hidden relative">
+            <div class="h-full rounded-full transition-all" style="width:${pct}%; background:${overBudget ? '#b41340' : color}"></div>
+          </div>
+        </div>
+        <div class="text-right shrink-0 w-28">
+          <span class="text-sm font-bold">${formatKRWFull(e.avgMonthly)}</span>
+          <span class="text-[10px] ${overBudget ? 'text-error' : 'text-on-surface-variant'} block">${budgetPct}% of budget</span>
+        </div>
+      </div>
+    `;
+  });
+  document.getElementById('gen-comparison').innerHTML = html || '<p class="text-on-surface-variant text-sm">No data</p>';
+}
+
+// ── Per-Capita Cost ────────────────────────────────────
+function renderPerCapita(records) {
+  const headcount = parseInt(document.getElementById('headcount-input').value) || 30;
+  const monthly = groupByMonth(records);
+  const last3 = monthly.slice(-3);
+
+  if (last3.length === 0) {
+    document.getElementById('per-capita').innerHTML = '<p class="text-on-surface-variant text-sm">No data</p>';
+    return;
+  }
+
+  let html = '';
+  last3.forEach(m => {
+    const perPerson = Math.round(m.total / headcount);
+    const [y, mo] = m.month.split('-');
+    const label = getMonthLabel(m.records[0]?.date) + ' ' + y;
+
+    html += `
+      <div class="flex items-center justify-between p-4 bg-surface-container-low rounded-xl">
+        <div>
+          <p class="text-sm font-bold">${label}</p>
+          <p class="text-xs text-on-surface-variant">Total: ${formatKRWFull(m.total)}</p>
+        </div>
+        <div class="text-right">
+          <p class="text-xl font-extrabold font-headline text-primary">${formatKRWFull(perPerson)}</p>
+          <p class="text-[10px] text-on-surface-variant">per person</p>
+        </div>
+      </div>
+    `;
+  });
+
+  document.getElementById('per-capita').innerHTML = html;
+}
+
+// ── Event Listeners ────────────────────────────────────
+document.getElementById('period-filter').addEventListener('change', render);
+document.getElementById('donut-group').addEventListener('change', () => {
+  const { os } = getFilteredRecords();
+  renderDonutChart(os);
+});
+document.getElementById('headcount-input').addEventListener('change', () => {
+  const { os } = getFilteredRecords();
+  renderPerCapita(os);
+});
+
+// ── Go! ────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
