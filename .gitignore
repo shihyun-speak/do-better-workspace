@@ -45,3 +45,6 @@ pnpm-lock.yaml
 
 # Never commit real API keys
 *_API_KEY.mcp.json
+# Service account keys
+**/shihyun-gws-*.json
+.vercel

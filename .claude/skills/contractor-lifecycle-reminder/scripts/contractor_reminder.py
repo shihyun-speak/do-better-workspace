@@ -15,15 +15,19 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 SPREADSHEET_ID = "1besywcuvNA8Je93GJrQdJa1im3clma_iRAGZUwRgPgM"
-SLACK_WEBHOOK_DM = "https://hooks.slack.com/services/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"
-SLACK_WEBHOOK_CHANNEL = "https://hooks.slack.com/services/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"
-SLACK_WEBHOOK_URL = SLACK_WEBHOOK_CHANNEL  # default to channel
+
+# Webhooks loaded from env vars (do not hardcode secrets)
+SLACK_WEBHOOK_DM = os.environ.get("SLACK_WEBHOOK_DM", "")
+SLACK_WEBHOOK_CHANNEL = os.environ.get("SLACK_WEBHOOK_CHANNEL", "")
+SLACK_WEBHOOK_URL = SLACK_WEBHOOK_CHANNEL or SLACK_WEBHOOK_DM
 SLACK_TEAM_URL = "https://usespeak.slack.com/team"
 
 # Manager name -> Slack user ID (for profile links)
-MANAGER_SLACK_IDS = {
+SLACK_IDS = {
+    # Managers
     "colton gyulay": "U56JF6RMZ",
     "colton": "U56JF6RMZ",
+    "connor / colton": "U56JF6RMZ",
     "khunal parkash": "U04TA8X3ZPV",
     "khunal": "U04TA8X3ZPV",
     "charlene xiong": "U025HSRU1SA",
@@ -34,6 +38,7 @@ MANAGER_SLACK_IDS = {
     "oj osborne-jones": "U08QUHJ9JEA",
     "alexandra osborne - jones (in her absence pass on to colton)": "U08QUHJ9JEA",
     "alexandra oj (since she is out, you can reach out to colton)": "U08QUHJ9JEA",
+    "alexandra osborn-jones": "U08QUHJ9JEA",
     "audrey": "URHQ7HXFB",
     "yan kindyushenko": "U0462LK49CG",
     "yan": "U0462LK49CG",
@@ -42,15 +47,39 @@ MANAGER_SLACK_IDS = {
     "kai hansen": "U0AJUBJ0KRB",
     "katya hadjipetkova": "U07PKRRB1MH",
     "katya": "U07PKRRB1MH",
+    "ekaterina hadjipetkova": "U07PKRRB1MH",
+    "ekaterina hadjipetkova (katya)": "U07PKRRB1MH",
     "sunjae lee": "U07PHUDU9DK",
     "sunjae": "U07PHUDU9DK",
-    "connor / colton": "U56JF6RMZ",
+    # People Ops / submitters — add Slack IDs below as needed
+    # "shihyun lee": "",
+    # "ginger chen": "",
+    # "geunhee lee": "",
+    # "serin choi": "",
+    # "sean masterman": "",
+    # "emily wang": "",
+    # "jack cody": "",
+    # "leon macalister": "",
+    # "mizuki moriyasu": "",
+    # "natalia konstantinovskaia": "",
+    # "mina choe": "",
+    # "naoki tamura": "",
+    # "naeun park": "",
+    # "jinwoo oh": "",
+    # "doohyun chung": "",
+    # "yujin kim": "",
+    # "zephyrine geneste": "",
+    # "virginia anderson": "",
+    # "jared forman": "",
+    # "alexia marchetti": "",
+    # "annie achtien": "",
+    # "may nguyen": "",
 }
 
 
 def fmt_manager(name: str) -> str:
     """Format manager name as @ mention, or plain text if not found."""
-    uid = MANAGER_SLACK_IDS.get(name.strip().lower())
+    uid = SLACK_IDS.get(name.strip().lower())
     if uid:
         return f"<@{uid}>"
     return name
@@ -198,6 +227,10 @@ def working_days_until(target: datetime, today: datetime | None = None) -> int:
 
 def fmt_date(d: datetime) -> str:
     return d.strftime("%b %-d (%a)")
+
+
+def fmt_wd(n: int) -> str:
+    return f"{n} working {'day' if n == 1 else 'days'} left"
 
 
 # --- Data loading ---
@@ -396,10 +429,10 @@ def build_digest() -> str:
         }
         if wd <= 7:
             entry["priority"] = "red"
-            entry["lines"].append(f"End date approaching — `{fmt_date(c['end_date'])}` · *{wd} working days left*")
+            entry["lines"].append(f"Contract ends `{fmt_date(c['end_date'])}` — *{fmt_wd(wd)}*")
         elif wd <= 14:
             entry["priority"] = "yellow"
-            entry["lines"].append(f"End date — `{fmt_date(c['end_date'])}` · *{wd} working days left*")
+            entry["lines"].append(f"Contract ends `{fmt_date(c['end_date'])}` — *{fmt_wd(wd)}*")
         if entry["priority"]:
             entries.append(entry)
 
@@ -416,18 +449,16 @@ def build_digest() -> str:
             "priority": None,
             "lines": [],
         }
-        # Late request: check if request was submitted with < 7 working days lead time
-        is_late = o["name"].strip().lower() in recent_names and wd_start < 7
+        is_new = entry["is_new"]
+        is_late = is_new and wd_start < 7
+        req_label = "Onboarding requested" if is_new else "Onboarding"
+        flag = " 🚩" if is_late else ""
         if wd_start <= 7:
-            if is_late:
-                entry["priority"] = "red"
-                entry["lines"].append(f"Onboarding / Starts `{fmt_date(o['start_date'])}` · ⚠️ *{wd_start} working days — late request*")
-            else:
-                entry["priority"] = "red" if wd_start <= 3 else "yellow"
-                entry["lines"].append(f"Onboarding / Starts `{fmt_date(o['start_date'])}` · *{wd_start} working days left*")
+            entry["priority"] = "red" if (is_late or wd_start <= 3) else "yellow"
+            entry["lines"].append(f"{req_label} — Starts `{fmt_date(o['start_date'])}` — *{fmt_wd(wd_start)}*{flag}")
         elif wd_start <= 14:
             entry["priority"] = "yellow"
-            entry["lines"].append(f"Onboarding / Starts `{fmt_date(o['start_date'])}` · *{wd_start} working days left*")
+            entry["lines"].append(f"{req_label} — Starts `{fmt_date(o['start_date'])}` — *{fmt_wd(wd_start)}*")
         if o.get("end_date"):
             entry["lines"].append(f"Contract period: `{fmt_date(o['start_date'])}` → `{fmt_date(o['end_date'])}`")
         if entry["priority"]:
@@ -443,13 +474,13 @@ def build_digest() -> str:
             "priority": None,
             "lines": [],
         }
-        detail = f"Extension"
+        req_label = "Extension requested" if entry["is_new"] else "Extension"
         if e.get("new_end_date"):
-            detail += f" / New end date: {fmt_date(e['new_end_date'])}"
-        entry["lines"].append(detail)
-        # Extensions are new requests if recent
+            entry["lines"].append(f"{req_label} — New end date `{fmt_date(e['new_end_date'])}`")
+        else:
+            entry["lines"].append(req_label)
         if entry["is_new"]:
-            entry["priority"] = "green"
+            entry["priority"] = "yellow"
         if entry["priority"]:
             entries.append(entry)
 
@@ -463,17 +494,21 @@ def build_digest() -> str:
             "priority": None,
             "lines": [],
         }
+        req_label = "Offboarding requested" if entry["is_new"] else "Offboarding"
         if o.get("end_date"):
             wd = working_days_until(o["end_date"], today)
             if wd <= 7:
                 entry["priority"] = "red"
-                entry["lines"].append(f"Offboarding / Ends `{fmt_date(o['end_date'])}` · *{wd} working days left*")
+                entry["lines"].append(f"{req_label} — Ends `{fmt_date(o['end_date'])}` — *{fmt_wd(wd)}*")
             elif wd <= 14:
                 entry["priority"] = "yellow"
-                entry["lines"].append(f"Offboarding / Ends `{fmt_date(o['end_date'])}` · *{wd} working days left*")
+                entry["lines"].append(f"{req_label} — Ends `{fmt_date(o['end_date'])}` — *{fmt_wd(wd)}*")
         if not entry["priority"] and entry["is_new"]:
-            entry["priority"] = "green"
-            entry["lines"].append("Offboarding — new request")
+            entry["priority"] = "yellow"
+            if o.get("end_date"):
+                entry["lines"].append(f"{req_label} — Ends `{fmt_date(o['end_date'])}`")
+            else:
+                entry["lines"].append(f"{req_label}")
         if entry["priority"]:
             entries.append(entry)
 
@@ -487,12 +522,13 @@ def build_digest() -> str:
             "priority": None,
             "lines": [],
         }
-        detail = "Rate Change"
+        req_label = "Rate change requested" if entry["is_new"] else "Rate change"
         if r.get("effective_date"):
-            detail += f" / Effective {fmt_date(r['effective_date'])}"
-        entry["lines"].append(detail)
+            entry["lines"].append(f"{req_label} — Effective `{fmt_date(r['effective_date'])}`")
+        else:
+            entry["lines"].append(req_label)
         if entry["is_new"]:
-            entry["priority"] = "green"
+            entry["priority"] = "yellow"
         if entry["priority"]:
             entries.append(entry)
 
@@ -515,21 +551,18 @@ def build_digest() -> str:
     # Group by bucket
     red = [e for e in by_name.values() if e["priority"] == "red"]
     yellow = [e for e in by_name.values() if e["priority"] == "yellow"]
-    green = [e for e in by_name.values() if e["priority"] == "green"]
-
     # Format message
     lines = []
-    divider = "━━━━━━━━━━━━━━━━━━━━"
     date_str = today.strftime("%A, %b %-d")
     lines.append(f"*📋 Contractor Lifecycle Digest — {date_str}*")
     lines.append("")
 
-    if not red and not yellow and not green:
+    if not red and not yellow:
         lines.append("All clear! No items need attention today. ✨")
         return "\n".join(lines)
 
-    def fmt_entry(e, force_new=False):
-        new_tag = " (New!)" if (force_new or e["is_new"]) else ""
+    def fmt_entry(e):
+        new_tag = " (New!)" if e["is_new"] else ""
         country_tag = f" `{e['country']}`" if e.get("country") else ""
         block = []
         block.append(f">*{e['name']}*{new_tag}{country_tag}")
@@ -552,12 +585,6 @@ def build_digest() -> str:
             lines.append(fmt_entry(e))
             lines.append("")
 
-    if green:
-        lines.append(f"*🟢 New Requests* ({len(green)})")
-        lines.append("")
-        for e in green:
-            lines.append(fmt_entry(e, force_new=True))
-            lines.append("")
     return "\n".join(lines).strip()
 
 
@@ -571,20 +598,20 @@ def _build_date_lookup() -> dict[str, str]:
         key = o["name"].strip().lower()
         parts = []
         if o.get("start_date"):
-            parts.append(f"Starts {fmt_date(o['start_date'])}")
+            parts.append(f"Starts `{fmt_date(o['start_date'])}`")
         if o.get("end_date"):
-            parts.append(f"Ends {fmt_date(o['end_date'])}")
+            parts.append(f"Ends `{fmt_date(o['end_date'])}`")
         if parts:
             lookup[key] = " → ".join(parts)
     for e in load_extension():
         if e.get("new_end_date"):
-            lookup[e["name"].strip().lower()] = f"New end date: {fmt_date(e['new_end_date'])}"
+            lookup[e["name"].strip().lower()] = f"New end date — `{fmt_date(e['new_end_date'])}`"
     for o in load_offboarding():
         if o.get("end_date"):
-            lookup[o["name"].strip().lower()] = f"Ends {fmt_date(o['end_date'])}"
+            lookup[o["name"].strip().lower()] = f"Ends `{fmt_date(o['end_date'])}`"
     for r in load_rate_change():
         if r.get("effective_date"):
-            lookup[r["name"].strip().lower()] = f"Effective {fmt_date(r['effective_date'])}"
+            lookup[r["name"].strip().lower()] = f"Effective `{fmt_date(r['effective_date'])}`"
     return lookup
 
 
@@ -626,11 +653,11 @@ def build_new_request_alert(hours: int = 1) -> str | None:
 
         block = []
         block.append(f">*{name}*{country_tag}")
-        block.append(f">{req_type} · Managed by {fmt_manager(manager)}")
+        block.append(f">{req_type} — Managed by {fmt_manager(manager)}")
         if date_info:
             block.append(f">{date_info}")
         if submitter:
-            block.append(f">Submitted by {submitter}")
+            block.append(f">Submitted by {fmt_manager(submitter)}")
         alerts.append("\n".join(block))
 
     if not alerts:
