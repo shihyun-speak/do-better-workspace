@@ -591,9 +591,13 @@ def build_digest() -> str:
 def _build_date_lookup() -> dict[str, str]:
     """Build name -> date info string from all tabs."""
     lookup: dict[str, str] = {}
+    # Build SoT end-date map first (for cross-referencing with extensions)
+    sot_end: dict[str, datetime] = {}
     for c in load_sot_contractors():
+        key = c["name"].strip().lower()
         if c["end_date"]:
-            lookup[c["name"].strip().lower()] = f"Ends {fmt_date(c['end_date'])}"
+            sot_end[key] = c["end_date"]
+            lookup[key] = f"Ends `{fmt_date(c['end_date'])}`"
     for o in load_onboarding():
         key = o["name"].strip().lower()
         parts = []
@@ -604,8 +608,13 @@ def _build_date_lookup() -> dict[str, str]:
         if parts:
             lookup[key] = " → ".join(parts)
     for e in load_extension():
+        key = e["name"].strip().lower()
         if e.get("new_end_date"):
-            lookup[e["name"].strip().lower()] = f"New end date — `{fmt_date(e['new_end_date'])}`"
+            original = sot_end.get(key)
+            if original:
+                lookup[key] = f"Current end date `{fmt_date(original)}` → new end date `{fmt_date(e['new_end_date'])}`"
+            else:
+                lookup[key] = f"New end date `{fmt_date(e['new_end_date'])}`"
     for o in load_offboarding():
         if o.get("end_date"):
             lookup[o["name"].strip().lower()] = f"Ends `{fmt_date(o['end_date'])}`"
