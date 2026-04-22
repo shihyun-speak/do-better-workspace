@@ -108,7 +108,7 @@ def _sign_rs256(message: bytes, private_key_pem: str) -> bytes:
         from cryptography.hazmat.primitives.asymmetric import padding
         key = serialization.load_pem_private_key(private_key_pem.encode(), password=None)
         return key.sign(message, padding.PKCS1v15(), hashes.SHA256())
-    except Exception:
+    except BaseException:
         pass
     # Fallback: use openssl CLI
     import tempfile
