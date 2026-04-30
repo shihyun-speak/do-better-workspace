@@ -76,6 +76,20 @@ SLACK_IDS = {
     # "may nguyen": "",
 }
 
+# Contractor name aliases: maps variant -> canonical name (both lowercased).
+# Used to deduplicate the same person appearing under different spellings
+# across tabs (e.g., legal name on SoT, nickname on Extension form).
+NAME_ALIASES = {
+    "katya hadjipetkova": "ekaterina hadjipetkova",
+    "min oh": "minjin oh",
+}
+
+
+def canonical_name(name: str) -> str:
+    """Return the canonical lowercase name for dedup keys."""
+    key = name.strip().lower()
+    return NAME_ALIASES.get(key, key)
+
 
 def fmt_manager(name: str) -> str:
     """Format manager name as @ mention, or plain text if not found."""
@@ -226,11 +240,19 @@ def working_days_until(target: datetime, today: datetime | None = None) -> int:
 
 
 def fmt_date(d: datetime) -> str:
-    return d.strftime("%b %-d (%a)")
+    """Format a date — include year only when it's not the current calendar year,
+    so reading 'May 2 (Sat)' isn't ambiguous between this year's and last year's."""
+    if d.year == datetime.now().year:
+        return d.strftime("%b %-d (%a)")
+    return d.strftime("%b %-d, %Y (%a)")
 
 
 def fmt_wd(n: int) -> str:
     return f"{n} working {'day' if n == 1 else 'days'} left"
+
+
+def fmt_wd_until_start(n: int) -> str:
+    return f"{n} working {'day' if n == 1 else 'days'} until Start Date"
 
 
 # --- Data loading ---
@@ -244,7 +266,7 @@ def load_country_lookup() -> dict:
     for row in rows[1:]:
         if len(row) < 5:
             continue
-        name = row[0].strip().lower()
+        name = canonical_name(row[0])
         country = row[4].strip()
         if name and country:
             lookup[name] = country
@@ -276,28 +298,35 @@ def load_sot_contractors() -> list[dict]:
     return contractors
 
 
+# "Closed" statuses per tab — anything NOT in these lists is treated as
+# action-needed (catches Pending, Action Required, blanks, and any new
+# status someone invents later). Done states vary by tab — Extension uses
+# "Active" to mean "extension processed, contractor running", whereas
+# Onboarding uses "Active" to mean "currently onboarded employee" (also
+# done from People Ops' perspective).
+_CLOSED_ONBOARDING = {"active", "ended", "void"}
+_CLOSED_EXTENSION = {"active", "void"}
+_CLOSED_OFFBOARDING = {"completed", "void", "#ref!"}
+_CLOSED_RATE_CHANGE = {"completed", "void"}
+
+
 def load_onboarding() -> list[dict]:
     rows = read_sheet("Onboarding!A:O")
     if len(rows) < 2:
         return []
-    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     items = []
     for row in rows[1:]:
         if len(row) < 15:
             row.extend([""] * (15 - len(row)))
         status = row[0].strip().lower()
-        if status in ("ended", "void", ""):
-            continue
-        start = parse_date(row[13])
-        end = parse_date(row[14])
-        # Only include if start date is today or in the future
-        if not start or start.date() < today.date():
+        if status in _CLOSED_ONBOARDING:
             continue
         items.append({
             "name": row[3].strip(),
             "manager": row[2].strip(),
-            "start_date": start,
-            "end_date": end,
+            "start_date": parse_date(row[13]),
+            "end_date": parse_date(row[14]),
+            "status": row[0].strip(),
             "request_type": "Onboarding",
             "source": "onboarding",
         })
@@ -305,78 +334,119 @@ def load_onboarding() -> list[dict]:
 
 
 def load_extension() -> list[dict]:
+    """Pending extensions only. Sheet row order = submission order, so when
+    the same contractor has multiple rows we keep the last (most recent)."""
     rows = read_sheet("Extension!A:F")
     if len(rows) < 2:
         return []
-    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    items = []
+    by_name: dict[str, dict] = {}
     for row in rows[1:]:
         if len(row) < 5:
             row.extend([""] * (5 - len(row)))
         status = row[0].strip().lower()
-        if status in ("ended", "void", ""):
+        if status in _CLOSED_EXTENSION:
             continue
-        new_end = parse_date(row[4])
-        if not new_end or new_end.date() < today.date():
+        name = row[3].strip()
+        if not name:
             continue
-        items.append({
-            "name": row[3].strip(),
+        by_name[canonical_name(name)] = {
+            "name": name,
             "manager": row[2].strip(),
-            "new_end_date": new_end,
+            "new_end_date": parse_date(row[4]),
+            "status": row[0].strip(),
             "request_type": "Extension",
             "source": "extension",
-        })
-    return items
+        }
+    return list(by_name.values())
+
+
+def load_prior_end_dates() -> dict[str, datetime]:
+    """For each contractor with a Pending extension, find the prior contract
+    end date — i.e. the date the *current* contract is about to expire on.
+
+    SoT is updated when an Extension request is filed, so SoT's End Date
+    reflects the *new* end, not the expiring one. The prior end lives on
+    the most recent *Active* (already-processed) Extension row, or — if
+    there was no prior extension — on the Onboarding row.
+    """
+    prior: dict[str, datetime] = {}
+    # Onboarding end dates as the baseline (used when no prior extension exists).
+    on_rows = read_sheet("Onboarding!A:O")
+    for row in on_rows[1:] if len(on_rows) > 1 else []:
+        if len(row) < 15:
+            row.extend([""] * (15 - len(row)))
+        name = row[3].strip()
+        if not name:
+            continue
+        end = parse_date(row[14])
+        if end:
+            prior[canonical_name(name)] = end
+    # Active Extension rows override Onboarding (later sheet rows = more recent;
+    # keep the latest by overwriting as we iterate top-to-bottom).
+    ext_rows = read_sheet("Extension!A:F")
+    for row in ext_rows[1:] if len(ext_rows) > 1 else []:
+        if len(row) < 5:
+            row.extend([""] * (5 - len(row)))
+        status = row[0].strip().lower()
+        if status != "active":
+            continue
+        name = row[3].strip()
+        if not name:
+            continue
+        end = parse_date(row[4])
+        if end:
+            prior[canonical_name(name)] = end
+    return prior
 
 
 def load_offboarding() -> list[dict]:
     rows = read_sheet("Offboarding!A:H")
     if len(rows) < 2:
         return []
-    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    items = []
+    by_name: dict[str, dict] = {}
     for row in rows[1:]:
         if len(row) < 5:
             row.extend([""] * (5 - len(row)))
         status = row[0].strip().lower()
-        if status in ("ended", "void", "completed", ""):
+        if status in _CLOSED_OFFBOARDING:
             continue
-        end = parse_date(row[4])
-        if not end or end.date() < today.date():
+        name = row[3].strip()
+        if not name:
             continue
-        items.append({
-            "name": row[3].strip(),
+        by_name[canonical_name(name)] = {
+            "name": name,
             "manager": row[2].strip(),
-            "end_date": end,
+            "end_date": parse_date(row[4]),
+            "status": row[0].strip(),
             "request_type": "Offboarding",
             "source": "offboarding",
-        })
-    return items
+        }
+    return list(by_name.values())
 
 
 def load_rate_change() -> list[dict]:
     rows = read_sheet("'Rate Change'!A:I")
     if len(rows) < 2:
         return []
-    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    items = []
+    by_name: dict[str, dict] = {}
     for row in rows[1:]:
         if len(row) < 6:
             row.extend([""] * (6 - len(row)))
         status = row[0].strip().lower()
-        if status in ("ended", "void", "completed", ""):
+        if status in _CLOSED_RATE_CHANGE:
             continue
-        eff = parse_date(row[5])
-        if not eff or eff.date() < today.date():
+        name = row[3].strip()
+        if not name:
             continue
-        items.append({
-            "name": row[3].strip(),
+        by_name[canonical_name(name)] = {
+            "name": name,
             "manager": row[2].strip(),
-            "effective_date": eff,
+            "effective_date": parse_date(row[5]),
+            "status": row[0].strip(),
             "request_type": "Rate Change",
             "source": "rate_change",
-        })
-    return items
+        }
+    return list(by_name.values())
 
 
 def load_recent_requests(hours: int = 24) -> set[str]:
@@ -389,7 +459,7 @@ def load_recent_requests(hours: int = 24) -> set[str]:
         if len(row) < 4:
             continue
         ts_str = row[0].strip()
-        name = row[3].strip().lower()
+        name = canonical_name(row[3])
         for fmt in ("%m/%d/%Y %H:%M:%S", "%m/%d/%Y %H:%M", "%Y-%m-%d %H:%M:%S"):
             try:
                 ts = datetime.strptime(ts_str, fmt)
@@ -408,135 +478,144 @@ def build_digest() -> str:
     recent_names = load_recent_requests(hours=24)
     country_lookup = load_country_lookup()
 
-    # Collect all items into a unified list
+    # Build a "prior end date" map for Extension entries so urgency anchors
+    # on the *expiring* contract, not the new end. SoT can't be used here —
+    # SoT is updated as soon as an Extension request comes in, so its End
+    # Date already reflects the new (post-extension) date by the time the
+    # Pending row exists. The actual prior end lives on the most recent
+    # Active Extension row, or — if none — on the Onboarding row.
+    prior_end_lookup = load_prior_end_dates()
+    sot_contractors = list(load_sot_contractors())
+
+    def make_entry(name: str, manager: str) -> dict:
+        key = canonical_name(name)
+        return {
+            "name": name,
+            "manager": manager,
+            "country": country_lookup.get(key, ""),
+            "is_new": key in recent_names,
+            "priority": None,
+            "lines": [],
+        }
+
+    def fmt_request(base: str, status: str | None) -> str:
+        """Render a request label. `Pending` is the implicit default and gets
+        suppressed; non-default statuses (e.g. `Action Required`) are kept
+        because they're a real signal from the requester."""
+        if not status or status.strip().lower() == "pending":
+            return base
+        return f"{base} ({status})"
+
+    def date_priority(anchor: datetime | None) -> tuple[str, int | None, str]:
+        """Given a key date, return (priority, working_days, flag).
+        🔴 if ≤ 5wd or in past; 🟡 otherwise. 🚩 flag if ≤ 5wd."""
+        if not anchor:
+            return ("yellow", None, "")
+        wd = working_days_until(anchor, today)
+        flag = " 🚩" if wd <= 5 else ""
+        priority = "red" if wd <= 5 else "yellow"
+        return (priority, wd, flag)
+
     entries = []
 
-    # 1. SoT active contractors — check end dates
-    for c in load_sot_contractors():
+    # 1. SoT active contractors — surface only when end date is within 10wd.
+    # (SoT is huge; we don't want every active contract — only ones approaching
+    # their end date, where extend-vs-offboard decision is needed.)
+    for c in sot_contractors:
         if not c["end_date"]:
             continue
-        # Skip if end date is already past
         if c["end_date"].date() < today.date():
             continue
         wd = working_days_until(c["end_date"], today)
-        entry = {
-            "name": c["name"],
-            "manager": c["manager"],
-            "country": country_lookup.get(c["name"].strip().lower(), ""),
-            "is_new": c["name"].strip().lower() in recent_names,
-            "priority": None,
-            "lines": [],
-        }
-        if wd <= 7:
-            entry["priority"] = "red"
-            entry["lines"].append(f"Contract ends `{fmt_date(c['end_date'])}` — *{fmt_wd(wd)}*")
-        elif wd <= 14:
-            entry["priority"] = "yellow"
-            entry["lines"].append(f"Contract ends `{fmt_date(c['end_date'])}` — *{fmt_wd(wd)}*")
-        if entry["priority"]:
-            entries.append(entry)
-
-    # 2. Onboarding — check start date proximity + late flag
-    for o in load_onboarding():
-        if not o["start_date"]:
+        if wd > 10:
             continue
-        wd_start = working_days_until(o["start_date"], today)
-        entry = {
-            "name": o["name"],
-            "manager": o["manager"],
-            "country": country_lookup.get(o["name"].strip().lower(), ""),
-            "is_new": o["name"].strip().lower() in recent_names,
-            "priority": None,
-            "lines": [],
-        }
-        is_new = entry["is_new"]
-        is_late = is_new and wd_start < 7
-        req_label = "Onboarding requested" if is_new else "Onboarding"
-        flag = " 🚩" if is_late else ""
-        if wd_start <= 7:
-            entry["priority"] = "red" if (is_late or wd_start <= 3) else "yellow"
-            entry["lines"].append(f"{req_label} — Starts `{fmt_date(o['start_date'])}` — *{fmt_wd(wd_start)}*{flag}")
-        elif wd_start <= 14:
-            entry["priority"] = "yellow"
-            entry["lines"].append(f"{req_label} — Starts `{fmt_date(o['start_date'])}` — *{fmt_wd(wd_start)}*")
-        if o.get("end_date"):
-            entry["lines"].append(f"Contract period: `{fmt_date(o['start_date'])}` → `{fmt_date(o['end_date'])}`")
-        if entry["priority"]:
-            entries.append(entry)
+        entry = make_entry(c["name"], c["manager"])
+        flag = " 🚩" if wd <= 5 else ""
+        entry["priority"] = "red" if wd <= 5 else "yellow"
+        entry["lines"].append(f"Contract ends `{fmt_date(c['end_date'])}` — *{fmt_wd(wd)}*{flag}")
+        entries.append(entry)
 
-    # 3. Extension — active extensions
+    # 2. Onboarding — surface every row not in a closed status (loader already
+    # filters Active/Ended/Void). These are paperwork to process, regardless
+    # of how far out the start date is.
+    for o in load_onboarding():
+        entry = make_entry(o["name"], o["manager"])
+        req_label = fmt_request("Onboarding", o.get("status"))
+        start = o.get("start_date")
+        priority, wd, flag = date_priority(start)
+        entry["priority"] = priority
+        if start and wd is not None:
+            entry["lines"].append(f"{req_label} — Starts `{fmt_date(start)}` — *{fmt_wd_until_start(wd)}*{flag}")
+        elif start:
+            entry["lines"].append(f"{req_label} — Starts `{fmt_date(start)}`")
+        else:
+            entry["lines"].append(f"{req_label} — start date TBD")
+        if o.get("end_date") and start:
+            entry["lines"].append(f"Contract period: `{fmt_date(start)}` → `{fmt_date(o['end_date'])}`")
+        entries.append(entry)
+
+    # 3. Extension — pending rows only (loader filters Active/Void). Urgency
+    # is anchored on the PRIOR end date (the contract about to expire), not
+    # the new end date — that's the deadline by which the extension must
+    # actually be processed. SoT can't be used because it's updated as soon
+    # as the request comes in, so its End Date already reflects the new end.
     for e in load_extension():
-        entry = {
-            "name": e["name"],
-            "manager": e["manager"],
-            "country": country_lookup.get(e["name"].strip().lower(), ""),
-            "is_new": e["name"].strip().lower() in recent_names,
-            "priority": None,
-            "lines": [],
-        }
-        req_label = "Extension requested" if entry["is_new"] else "Extension"
-        if e.get("new_end_date"):
-            entry["lines"].append(f"{req_label} — New end date `{fmt_date(e['new_end_date'])}`")
+        key = canonical_name(e["name"])
+        entry = make_entry(e["name"], e["manager"])
+        req_label = fmt_request("Extension", e.get("status"))
+        prior_end = prior_end_lookup.get(key)
+        new_end = e.get("new_end_date")
+        date_str = ""
+        if prior_end and new_end:
+            date_str = f" — Current end `{fmt_date(prior_end)}` → new `{fmt_date(new_end)}`"
+        elif prior_end:
+            date_str = f" — Current end `{fmt_date(prior_end)}`"
+        elif new_end:
+            date_str = f" — New end date `{fmt_date(new_end)}`"
+        anchor = prior_end or new_end
+        priority, wd, flag = date_priority(anchor)
+        entry["priority"] = priority
+        if anchor and wd is not None:
+            entry["lines"].append(f"{req_label}{date_str} — *{fmt_wd(wd)}*{flag}")
         else:
-            entry["lines"].append(req_label)
-        if entry["is_new"]:
-            entry["priority"] = "yellow"
-        if entry["priority"]:
-            entries.append(entry)
+            entry["lines"].append(f"{req_label}{date_str}")
+        entries.append(entry)
 
-    # 4. Offboarding
+    # 4. Offboarding — pending rows only.
     for o in load_offboarding():
-        entry = {
-            "name": o["name"],
-            "manager": o["manager"],
-            "country": country_lookup.get(o["name"].strip().lower(), ""),
-            "is_new": o["name"].strip().lower() in recent_names,
-            "priority": None,
-            "lines": [],
-        }
-        req_label = "Offboarding requested" if entry["is_new"] else "Offboarding"
-        if o.get("end_date"):
-            wd = working_days_until(o["end_date"], today)
-            if wd <= 7:
-                entry["priority"] = "red"
-                entry["lines"].append(f"{req_label} — Ends `{fmt_date(o['end_date'])}` — *{fmt_wd(wd)}*")
-            elif wd <= 14:
-                entry["priority"] = "yellow"
-                entry["lines"].append(f"{req_label} — Ends `{fmt_date(o['end_date'])}` — *{fmt_wd(wd)}*")
-        if not entry["priority"] and entry["is_new"]:
-            entry["priority"] = "yellow"
-            if o.get("end_date"):
-                entry["lines"].append(f"{req_label} — Ends `{fmt_date(o['end_date'])}`")
-            else:
-                entry["lines"].append(f"{req_label}")
-        if entry["priority"]:
-            entries.append(entry)
-
-    # 5. Rate Change
-    for r in load_rate_change():
-        entry = {
-            "name": r["name"],
-            "manager": r["manager"],
-            "country": country_lookup.get(r["name"].strip().lower(), ""),
-            "is_new": r["name"].strip().lower() in recent_names,
-            "priority": None,
-            "lines": [],
-        }
-        req_label = "Rate change requested" if entry["is_new"] else "Rate change"
-        if r.get("effective_date"):
-            entry["lines"].append(f"{req_label} — Effective `{fmt_date(r['effective_date'])}`")
+        entry = make_entry(o["name"], o["manager"])
+        req_label = fmt_request("Offboarding", o.get("status"))
+        end = o.get("end_date")
+        priority, wd, flag = date_priority(end)
+        entry["priority"] = priority
+        if end and wd is not None:
+            entry["lines"].append(f"{req_label} — Ends `{fmt_date(end)}` — *{fmt_wd(wd)}*{flag}")
+        elif end:
+            entry["lines"].append(f"{req_label} — Ends `{fmt_date(end)}`")
         else:
-            entry["lines"].append(req_label)
-        if entry["is_new"]:
-            entry["priority"] = "yellow"
-        if entry["priority"]:
-            entries.append(entry)
+            entry["lines"].append(f"{req_label} — end date TBD")
+        entries.append(entry)
+
+    # 5. Rate Change — pending rows only.
+    for r in load_rate_change():
+        entry = make_entry(r["name"], r["manager"])
+        req_label = fmt_request("Rate change", r.get("status"))
+        eff = r.get("effective_date")
+        priority, wd, flag = date_priority(eff)
+        entry["priority"] = priority
+        if eff and wd is not None:
+            entry["lines"].append(f"{req_label} — Effective `{fmt_date(eff)}` — *{fmt_wd(wd)}*{flag}")
+        elif eff:
+            entry["lines"].append(f"{req_label} — Effective `{fmt_date(eff)}`")
+        else:
+            entry["lines"].append(f"{req_label} — effective date TBD")
+        entries.append(entry)
 
     # Deduplicate: keep each contractor in their highest-priority bucket
     priority_rank = {"red": 0, "yellow": 1, "green": 2}
     by_name: dict[str, dict] = {}
     for e in entries:
-        key = e["name"].strip().lower()
+        key = canonical_name(e["name"])
         if key not in by_name or priority_rank.get(e["priority"], 99) < priority_rank.get(by_name[key]["priority"], 99):
             # Merge is_new flag (keep True if any entry has it)
             if key in by_name and by_name[key]["is_new"]:
@@ -591,15 +670,12 @@ def build_digest() -> str:
 def _build_date_lookup() -> dict[str, str]:
     """Build name -> date info string from all tabs."""
     lookup: dict[str, str] = {}
-    # Build SoT end-date map first (for cross-referencing with extensions)
-    sot_end: dict[str, datetime] = {}
     for c in load_sot_contractors():
-        key = c["name"].strip().lower()
+        key = canonical_name(c["name"])
         if c["end_date"]:
-            sot_end[key] = c["end_date"]
             lookup[key] = f"Ends `{fmt_date(c['end_date'])}`"
     for o in load_onboarding():
-        key = o["name"].strip().lower()
+        key = canonical_name(o["name"])
         parts = []
         if o.get("start_date"):
             parts.append(f"Starts `{fmt_date(o['start_date'])}`")
@@ -607,20 +683,24 @@ def _build_date_lookup() -> dict[str, str]:
             parts.append(f"Ends `{fmt_date(o['end_date'])}`")
         if parts:
             lookup[key] = " → ".join(parts)
+    # Use prior end date (from last Active Extension or Onboarding) for the
+    # "Current end" side — SoT is already updated to the new end by the time
+    # the Pending row exists, so it can't serve as "current".
+    prior_end = load_prior_end_dates()
     for e in load_extension():
-        key = e["name"].strip().lower()
+        key = canonical_name(e["name"])
         if e.get("new_end_date"):
-            original = sot_end.get(key)
+            original = prior_end.get(key)
             if original:
                 lookup[key] = f"Current end date `{fmt_date(original)}` → new end date `{fmt_date(e['new_end_date'])}`"
             else:
                 lookup[key] = f"New end date `{fmt_date(e['new_end_date'])}`"
     for o in load_offboarding():
         if o.get("end_date"):
-            lookup[o["name"].strip().lower()] = f"Ends `{fmt_date(o['end_date'])}`"
+            lookup[canonical_name(o["name"])] = f"Ends `{fmt_date(o['end_date'])}`"
     for r in load_rate_change():
         if r.get("effective_date"):
-            lookup[r["name"].strip().lower()] = f"Effective `{fmt_date(r['effective_date'])}`"
+            lookup[canonical_name(r["name"])] = f"Effective `{fmt_date(r['effective_date'])}`"
     return lookup
 
 
@@ -652,7 +732,7 @@ def build_new_request_alert(hours: int = 1) -> str | None:
         if not ts or ts < cutoff:
             continue
         name = row[3].strip()
-        key = name.strip().lower()
+        key = canonical_name(name)
         req_type = row[4].strip() if len(row) > 4 else "Unknown"
         manager = row[2].strip()
         country_tag = f" `{country_lookup.get(key, '')}`" if country_lookup.get(key) else ""
