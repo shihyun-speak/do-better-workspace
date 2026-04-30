@@ -637,9 +637,14 @@ def build_digest() -> str:
             if e["is_new"]:
                 by_name[key]["is_new"] = True
 
-    # Group by bucket
-    red = [e for e in by_name.values() if e["priority"] == "red"]
-    yellow = [e for e in by_name.values() if e["priority"] == "yellow"]
+    # Group by bucket and sort within each by approver (so same-approver
+    # entries cluster), then by contractor name as tiebreaker.
+    def sort_key(e: dict) -> tuple[str, str]:
+        approver = (e.get("approver") or e.get("manager") or "").strip().lower()
+        return (approver, e["name"].strip().lower())
+
+    red = sorted((e for e in by_name.values() if e["priority"] == "red"), key=sort_key)
+    yellow = sorted((e for e in by_name.values() if e["priority"] == "yellow"), key=sort_key)
     # Format message
     lines = []
     date_str = today.strftime("%A, %b %-d")
