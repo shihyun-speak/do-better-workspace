@@ -542,6 +542,7 @@ def build_digest() -> str:
         entry = make_entry(c["name"], c["manager"])
         flag = " 🚩" if wd <= 5 else ""
         entry["priority"] = "red" if wd <= 5 else "yellow"
+        entry["sort_wd"] = wd
         entry["lines"].append(f"Contract ends `{fmt_date(c['end_date'])}` — *{fmt_wd(wd)}*{flag}")
         entries.append(entry)
 
@@ -554,6 +555,7 @@ def build_digest() -> str:
         start = o.get("start_date")
         priority, wd, flag = date_priority(start)
         entry["priority"] = priority
+        entry["sort_wd"] = wd
         if start and wd is not None:
             entry["lines"].append(f"{req_label} — Starts `{fmt_date(start)}` — *{fmt_wd_until_start(wd)}*{flag}")
         elif start:
@@ -585,6 +587,7 @@ def build_digest() -> str:
         anchor = prior_end or new_end
         priority, wd, flag = date_priority(anchor)
         entry["priority"] = priority
+        entry["sort_wd"] = wd
         if anchor and wd is not None:
             entry["lines"].append(f"{req_label}{date_str} — *{fmt_wd(wd)}*{flag}")
         else:
@@ -598,6 +601,7 @@ def build_digest() -> str:
         end = o.get("end_date")
         priority, wd, flag = date_priority(end)
         entry["priority"] = priority
+        entry["sort_wd"] = wd
         if end and wd is not None:
             entry["lines"].append(f"{req_label} — Ends `{fmt_date(end)}` — *{fmt_wd(wd)}*{flag}")
         elif end:
@@ -613,6 +617,7 @@ def build_digest() -> str:
         eff = r.get("effective_date")
         priority, wd, flag = date_priority(eff)
         entry["priority"] = priority
+        entry["sort_wd"] = wd
         if eff and wd is not None:
             entry["lines"].append(f"{req_label} — Effective `{fmt_date(eff)}` — *{fmt_wd(wd)}*{flag}")
         elif eff:
@@ -637,11 +642,13 @@ def build_digest() -> str:
             if e["is_new"]:
                 by_name[key]["is_new"] = True
 
-    # Group by bucket and sort within each by approver (so same-approver
-    # entries cluster), then by contractor name as tiebreaker.
-    def sort_key(e: dict) -> tuple[str, str]:
-        approver = (e.get("approver") or e.get("manager") or "").strip().lower()
-        return (approver, e["name"].strip().lower())
+    # Group by bucket and sort within each by working-days-left ascending —
+    # most urgent on top. Falls back on contractor name if there's no date.
+    def sort_key(e: dict) -> tuple[int, str]:
+        wd = e.get("sort_wd")
+        if wd is None:
+            wd = 10**6  # entries without a date sink to the bottom
+        return (wd, e["name"].strip().lower())
 
     red = sorted((e for e in by_name.values() if e["priority"] == "red"), key=sort_key)
     yellow = sorted((e for e in by_name.values() if e["priority"] == "yellow"), key=sort_key)
