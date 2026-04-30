@@ -291,6 +291,7 @@ def load_sot_contractors() -> list[dict]:
             "job_title": entry.get("Job Title", "").strip(),
             "department": entry.get("Department", "").strip(),
             "manager": entry.get("Speak Manager", "").strip(),
+            "approver": entry.get("Contractor Invoice Approver", "").strip(),
             "start_date": parse_date(entry.get("Start Date", "")),
             "end_date": parse_date(entry.get("End Date", "")),
             "source": "sot",
@@ -486,12 +487,21 @@ def build_digest() -> str:
     # Active Extension row, or — if none — on the Onboarding row.
     prior_end_lookup = load_prior_end_dates()
     sot_contractors = list(load_sot_contractors())
+    # Approver lookup: contractor name -> Contractor Invoice Approver from SoT.
+    # This is a separate person from the Speak Manager — typically whoever
+    # signed off on/submitted the contractor request.
+    approver_lookup: dict[str, str] = {
+        canonical_name(c["name"]): c.get("approver", "")
+        for c in sot_contractors
+        if c.get("approver")
+    }
 
     def make_entry(name: str, manager: str) -> dict:
         key = canonical_name(name)
         return {
             "name": name,
             "manager": manager,
+            "approver": approver_lookup.get(key, ""),
             "country": country_lookup.get(key, ""),
             "is_new": key in recent_names,
             "priority": None,
@@ -645,7 +655,8 @@ def build_digest() -> str:
         country_tag = f" `{e['country']}`" if e.get("country") else ""
         block = []
         block.append(f">*{e['name']}*{new_tag}{country_tag}")
-        block.append(f">Managed by {fmt_manager(e['manager'])}")
+        approver = e.get("approver") or e["manager"]
+        block.append(f">Invoice Approver: {fmt_manager(approver)}")
         for line in e["lines"]:
             block.append(f">{line}")
         return "\n".join(block)
@@ -715,6 +726,11 @@ def build_new_request_alert(hours: int = 1) -> str | None:
 
     country_lookup = load_country_lookup()
     date_lookup = _build_date_lookup()
+    approver_lookup = {
+        canonical_name(c["name"]): c.get("approver", "")
+        for c in load_sot_contractors()
+        if c.get("approver")
+    }
 
     cutoff = datetime.now() - timedelta(hours=hours)
     alerts = []
@@ -742,7 +758,8 @@ def build_new_request_alert(hours: int = 1) -> str | None:
 
         block = []
         block.append(f">*{name}*{country_tag}")
-        block.append(f">{req_type} — Managed by {fmt_manager(manager)}")
+        approver = approver_lookup.get(key) or manager
+        block.append(f">{req_type} — Invoice Approver: {fmt_manager(approver)}")
         if date_info:
             block.append(f">{date_info}")
         if submitter:
