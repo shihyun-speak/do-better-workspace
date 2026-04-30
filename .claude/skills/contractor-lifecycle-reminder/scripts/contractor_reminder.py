@@ -84,6 +84,39 @@ NAME_ALIASES = {
     "min oh": "minjin oh",
 }
 
+# --- Owner routing -------------------------------------------------------
+# People Ops divides contractor coverage by geography:
+#   Shihyun = APAC, Hemmi = US + Rest of World.
+# Country lookups are substring-based and case-insensitive, so values like
+# "South Korea" or "Australia (Sydney)" both match.
+APAC_COUNTRIES = (
+    "japan", "korea", "south korea", "republic of korea",
+    "taiwan", "singapore", "hong kong", "china", "philippines",
+    "vietnam", "thailand", "indonesia", "malaysia", "india",
+    "australia", "new zealand",
+)
+SHIHYUN_ID = "U08336ST4HK"  # APAC owner
+HEMMI_ID = "U08EJGRKP50"    # US + RoW owner
+
+
+def owner_for(country: str) -> str:
+    """Return 'apac' or 'rowus' (or 'unknown' when country is missing)."""
+    c = (country or "").strip().lower()
+    if not c:
+        return "unknown"
+    for apac in APAC_COUNTRIES:
+        if apac in c:
+            return "apac"
+    return "rowus"
+
+
+def owner_label(owner: str) -> str:
+    if owner == "apac":
+        return f"_APAC — <@{SHIHYUN_ID}>_"
+    if owner == "rowus":
+        return f"_US + RoW — <@{HEMMI_ID}>_"
+    return f"_Unknown country — <@{SHIHYUN_ID}> / <@{HEMMI_ID}>_"
+
 
 def canonical_name(name: str) -> str:
     """Return the canonical lowercase name for dedup keys."""
@@ -498,11 +531,13 @@ def build_digest() -> str:
 
     def make_entry(name: str, manager: str) -> dict:
         key = canonical_name(name)
+        country = country_lookup.get(key, "")
         return {
             "name": name,
             "manager": manager,
             "approver": approver_lookup.get(key, ""),
-            "country": country_lookup.get(key, ""),
+            "country": country,
+            "owner": owner_for(country),
             "is_new": key in recent_names,
             "priority": None,
             "lines": [],
@@ -642,16 +677,14 @@ def build_digest() -> str:
             if e["is_new"]:
                 by_name[key]["is_new"] = True
 
-    # Group by bucket and sort within each by working-days-left ascending —
-    # most urgent on top. Falls back on contractor name if there's no date.
-    def sort_key(e: dict) -> tuple[int, str]:
+    # Within a bucket, sort by working-days-left ascending (most urgent first).
+    # Entries without a date sink to the bottom.
+    def date_sort_key(e: dict) -> tuple[int, str]:
         wd = e.get("sort_wd")
-        if wd is None:
-            wd = 10**6  # entries without a date sink to the bottom
-        return (wd, e["name"].strip().lower())
+        return (wd if wd is not None else 10**6, e["name"].strip().lower())
 
-    red = sorted((e for e in by_name.values() if e["priority"] == "red"), key=sort_key)
-    yellow = sorted((e for e in by_name.values() if e["priority"] == "yellow"), key=sort_key)
+    red = [e for e in by_name.values() if e["priority"] == "red"]
+    yellow = [e for e in by_name.values() if e["priority"] == "yellow"]
     # Format message
     lines = []
     date_str = today.strftime("%A, %b %-d")
@@ -673,19 +706,28 @@ def build_digest() -> str:
             block.append(f">{line}")
         return "\n".join(block)
 
-    if red:
-        lines.append(f"*🔴 Needs Attention* ({len(red)})")
+    def render_bucket(header: str, items: list[dict]) -> None:
+        if not items:
+            return
+        lines.append(f"*{header}* ({len(items)})")
         lines.append("")
-        for e in red:
-            lines.append(fmt_entry(e))
+        # Group by owner so APAC entries route to Shihyun, US+RoW to Hemmi.
+        # APAC first (smaller, usually), then RoW+US, then unknown country.
+        for owner_key in ("apac", "rowus", "unknown"):
+            group = sorted(
+                (e for e in items if e.get("owner") == owner_key),
+                key=date_sort_key,
+            )
+            if not group:
+                continue
+            lines.append(owner_label(owner_key))
             lines.append("")
+            for e in group:
+                lines.append(fmt_entry(e))
+                lines.append("")
 
-    if yellow:
-        lines.append(f"*🟡 Coming Up* ({len(yellow)})")
-        lines.append("")
-        for e in yellow:
-            lines.append(fmt_entry(e))
-            lines.append("")
+    render_bucket("🔴 Needs Attention", red)
+    render_bucket("🟡 Coming Up", yellow)
 
     return "\n".join(lines).strip()
 
