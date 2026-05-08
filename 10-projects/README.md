@@ -1,27 +1,34 @@
 # 10 Projects
 
-활성 프로젝트를 관리하는 공간입니다.
+Active projects, grouped by category.
 
-## 폴더 구조
+## Structure
 
 ```
 10-projects/
-├── README.md          (이 문서)
-└── 11-consulting/     컨설팅 프로젝트
+├── events/           — Team events & company trips
+│   ├── 11-apac-people-events/
+│   └── 12-2026-company-trip/
+├── workplace/        — Office, facilities, perks
+│   ├── 14-snack-dashboard/
+│   └── 15-japan-office-setup/
+└── contractor-ops/   — Contractor lifecycle automation
+    ├── 13a-contractor-lifecycle-bot/
+    └── 13b-contractor-lifecycle-dashboard/
 ```
 
-새 프로젝트 시작 시 `12-xxx/`, `13-xxx/` 형태로 하위 폴더를 생성하세요.
+## Principles
 
-## 프로젝트 관리 원칙
+1. **Active only** — completed projects move to `90-archive/`
+2. **Categorize first** — drop new projects into the matching category folder
+3. **Number prefix** — keep Johnny Decimal IDs (`13a-`, `14-`) for stable references; categories themselves are unnumbered
 
-1. **활성 프로젝트만**: 현재 진행 중인 프로젝트만 여기에 둡니다
-2. **명확한 목표**: 각 프로젝트는 명확한 목표와 결과물이 있어야 합니다
-3. **완료 시 이동**: 프로젝트 완료 시 90-archive로 이동합니다
+## Adding a new project
 
-## 템플릿
-
-`00-system/01-templates/project-template.md`를 사용하여 새 프로젝트를 시작하세요.
+1. Pick the category folder (or create a new one if no fit)
+2. Use the next available number: `[NN]-[descriptive-name]/`
+3. Start from `00-system/01-templates/project-template.md` if available
 
 ---
 
-**Last Updated**: 2026-03-17
+**Last updated**: 2026-05-08
