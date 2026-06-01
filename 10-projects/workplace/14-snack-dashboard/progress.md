@@ -25,6 +25,15 @@
 - [x] **Purchase History Table** — searchable, filterable by event type
 - [x] **Recent Purchases** — last 5 orders
 
+### Slack Integration
+- [x] **Snack request button** → Slack (`/api/request`, `SLACK_SNACK_WEBHOOK`)
+- [x] **Weekly Restock Reminder** → `#happy-nyam-nyam` (`/api/restock`, `SLACK_RESTOCK_WEBHOOK`)
+  - Vercel Cron: Mondays 09:00 KST (`0 0 * * 1` UTC)
+  - "What did I order ~4 weeks ago this week?" — mirrors the monthly buying rhythm so each week's list differs
+  - Window: orders dated [run − 35d, run − 28d); top 5 shown, rest as "+N more"
+  - Aliases merged: 감귤=만다린, 루이보스=루이보스차, 요거트=그릭요거트=요거톡
+  - Stays silent when nothing was ordered that week last month
+
 ### Analytics Page (analytics.html)
 - [x] **Donut Chart** — groupable by Vendor / Category / Event
   - [x] Period filter: This Month / Last Month / 3/6/12 Months / All Time
@@ -52,7 +61,6 @@
 - [ ] 이벤트별 예산 별도 tracking (Bi-weekly, Happy Hour)
 - [ ] Mobile responsive 최적화
 - [ ] 쩝쩝박사 임기 카운트다운 위젯
-- [ ] Slack `#happy-nyam-nyam` 연동 (주문 알림)
 - [ ] CSV export 기능
 
 ---

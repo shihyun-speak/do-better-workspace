@@ -3,5 +3,8 @@
   "outputDirectory": null,
   "rewrites": [
     { "source": "/api/snacks", "destination": "/api/snacks" }
+  ],
+  "crons": [
+    { "path": "/api/restock", "schedule": "0 0 * * 1" }
   ]
 }
