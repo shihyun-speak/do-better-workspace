@@ -30,7 +30,7 @@
 - [x] **Weekly Restock Reminder** → `#happy-nyam-nyam` (`/api/restock`, reuses `SLACK_SNACK_WEBHOOK`)
   - Vercel Cron: Mondays 09:00 KST (`0 0 * * 1` UTC)
   - "What did I order ~4 weeks ago this week?" — mirrors the monthly buying rhythm so each week's list differs
-  - Window: orders dated [run − 35d, run − 28d); top 5 shown, rest as "+N more"
+  - Window: orders dated [run − 35d, run − 28d); ranked by all-time order frequency, top 7 shown
   - Aliases merged: 감귤=만다린, 루이보스=루이보스차, 요거트=그릭요거트=요거톡
   - Stays silent when nothing was ordered that week last month
 

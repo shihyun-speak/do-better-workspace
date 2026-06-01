@@ -20,7 +20,7 @@ const DAY = 24 * 60 * 60 * 1000;
 // Window = [run - 35d, run - 28d): the 7-day span sitting four weeks back.
 const LOOKBACK_FAR_DAYS = 35;
 const LOOKBACK_NEAR_DAYS = 28;
-const TOP_N = 5; // max items shown; rest summarized as "+N more"
+const TOP_N = 7; // show the 7 most-frequently-ordered items from that week; drop the tail
 
 function canon(key) {
   return ALIASES[key] || key;
@@ -51,42 +51,45 @@ async function fetchAllRows() {
   return all;
 }
 
-// Items ordered in the corresponding week ~1 month before `runDate`.
-// Anchored to the calendar (run date), so the list changes every week.
+// Items ordered in the corresponding week ~1 month before `runDate`,
+// ranked by all-time order frequency (most-bought staples first) and
+// capped at TOP_N. Anchored to the calendar, so the list changes weekly.
 function itemsFromWeekLastMonth(rows, runDate) {
   const runMs = new Date(runDate).getTime();
   const start = new Date(runMs - LOOKBACK_FAR_DAYS * DAY).toISOString().substring(0, 10);
   const end = new Date(runMs - LOOKBACK_NEAR_DAYS * DAY).toISOString().substring(0, 10);
 
-  // canonical name -> earliest date seen in the window (for ordering)
-  const seen = new Map();
+  // all-time frequency per canonical item (across the whole DB)
+  const freq = {};
+  // canonical items ordered within the target week
+  const inWeek = new Set();
   for (const row of rows) {
     const p = row.properties || {};
     const name = (p['상품명']?.title || []).map((t) => t.plain_text || '').join('');
     const date = p['구매일']?.date?.start || '';
-    if (!name || !date) continue;
-    if (date < start || date >= end) continue;
+    if (!name) continue;
+    const inWindow = date && date >= start && date < end;
     for (const raw of name.split(',')) {
       const item = raw.trim();
       if (!item || SKIP.test(item)) continue;
       const key = canon(item.replace(/\s+/g, ' ').substring(0, 25));
       if (key.length < 2) continue;
-      if (!seen.has(key)) seen.set(key, date);
+      freq[key] = (freq[key] || 0) + 1;
+      if (inWindow) inWeek.add(key);
     }
   }
-  return { items: [...seen.keys()], start, end };
+
+  const items = [...inWeek].sort((a, b) => freq[b] - freq[a]).slice(0, TOP_N);
+  return { items, total: inWeek.size, start, end };
 }
 
 function buildSlackMessage(items) {
-  const shown = items.slice(0, TOP_N);
-  const extra = items.length - shown.length;
-  const lines = shown.map((name) => `• ${name}`).join('\n');
-  const more = extra > 0 ? `\n_+${extra} more_` : '';
+  const lines = items.map((name) => `• ${name}`).join('\n');
   return {
     text:
       `🍿 *Weekly Restock Reminder*\n\n` +
       `Around this time last month, you ordered these — running low?\n\n` +
-      `${lines}${more}\n\n` +
+      `${lines}\n\n` +
       `_Based on your orders ~4 weeks ago · 📊 <https://14-snack-dashboard.vercel.app|Open dashboard>_`,
   };
 }
