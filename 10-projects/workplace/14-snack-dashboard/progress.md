@@ -27,7 +27,7 @@
 
 ### Slack Integration
 - [x] **Snack request button** → Slack (`/api/request`, `SLACK_SNACK_WEBHOOK`)
-- [x] **Weekly Restock Reminder** → `#happy-nyam-nyam` (`/api/restock`, `SLACK_RESTOCK_WEBHOOK`)
+- [x] **Weekly Restock Reminder** → `#happy-nyam-nyam` (`/api/restock`, reuses `SLACK_SNACK_WEBHOOK`)
   - Vercel Cron: Mondays 09:00 KST (`0 0 * * 1` UTC)
   - "What did I order ~4 weeks ago this week?" — mirrors the monthly buying rhythm so each week's list differs
   - Window: orders dated [run − 35d, run − 28d); top 5 shown, rest as "+N more"

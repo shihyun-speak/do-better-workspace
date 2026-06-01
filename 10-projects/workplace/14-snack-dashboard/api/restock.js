@@ -95,9 +95,10 @@ export default async function handler(req, res) {
   if (!NOTION_TOKEN || !NOTION_SNACK_DB_ID) {
     return res.status(500).json({ error: 'Missing NOTION_TOKEN or NOTION_SNACK_DB_ID env vars' });
   }
-  const SLACK_WEBHOOK = process.env.SLACK_RESTOCK_WEBHOOK;
+  // Reuses the snack-request webhook (already provisioned in Vercel).
+  const SLACK_WEBHOOK = process.env.SLACK_SNACK_WEBHOOK;
   if (!SLACK_WEBHOOK) {
-    return res.status(500).json({ error: 'SLACK_RESTOCK_WEBHOOK not configured' });
+    return res.status(500).json({ error: 'SLACK_SNACK_WEBHOOK not configured' });
   }
 
   try {
