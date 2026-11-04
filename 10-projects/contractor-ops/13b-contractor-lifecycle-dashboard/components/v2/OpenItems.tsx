@@ -132,6 +132,7 @@ export default function OpenItems({
   const [tab, setTab] = useState<RequestSource>("onboarding");
   const [confirming, setConfirming] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [showAllUndecided, setShowAllUndecided] = useState(false);
 
   const plan = PLANS[tab];
   const saved = (r: RequestEntry) => steps[requestKey(r)] || {};
@@ -357,37 +358,6 @@ export default function OpenItems({
         <h1>Open items</h1>
         <p className="sub">{regionLabel}</p>
       </div>
-      {undecided.length > 0 && (
-        <section className="panel undecided">
-          <div className="panelhead">
-            <h2>Ending soon, nothing filed <span className="num">{undecided.length}</span></h2>
-            <span className="hint">No extension or offboarding yet. Extend or offboard?</span>
-          </div>
-          <ul className="qlist">
-            {undecided.map((p) => {
-              const d = parseDate(p.endDate);
-              const n = d ? daysFromToday(d) : null;
-              return (
-                <li key={p.rowIndex} className="qitem">
-                  <div className="who">
-                    <NameBtn name={p.name} />
-                    <OwnerPill owner={p.owner} country={p.country} />
-                    {n !== null && (
-                      <span className={n < 0 ? "dday past" : n <= 3 ? "dday soon" : "dday"}>
-                        {n > 0 ? `D-${n} to end date` : n === 0 ? "Ends today" : `Ended ${-n} day${n === -1 ? "" : "s"} ago`}
-                      </span>
-                    )}
-                  </div>
-                  <div className="ctx">Ends {fmt(p.endDate, true)}, manager {p.manager || "unknown"}</div>
-                  <div className="actions">
-                    <button type="button" className="btn primary" onClick={() => askManager(p)}>Ask manager</button>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      )}
       <div className="typetabs" role="tablist">
         {REQUEST_TYPES.map((t) => (
           <button key={t} type="button" role="tab" className={`t-${t}`} aria-selected={tab === t} onClick={() => { setTab(t); setConfirming(null); }}>
@@ -433,6 +403,37 @@ export default function OpenItems({
           )}
         </div>
         <div className="stack">
+          {undecided.length > 0 && (
+            <section className="panel undecided">
+              <div className="panelhead">
+                <h2>Ending soon, nothing filed <span className="num">{undecided.length}</span></h2>
+              </div>
+              <ul className="ulist">
+                {(showAllUndecided ? undecided : undecided.slice(0, 3)).map((p) => {
+                  const d = parseDate(p.endDate);
+                  const n = d ? daysFromToday(d) : null;
+                  return (
+                    <li key={p.rowIndex} title={`Ends ${fmt(p.endDate, true)}, manager ${p.manager || "unknown"}`}>
+                      <NameBtn name={p.name} />
+                      {n !== null && (
+                        <span className={n < 0 ? "dday past" : n <= 3 ? "dday soon" : "dday"}>
+                          {n > 0 ? `D-${n}` : n === 0 ? "Today" : `Ended ${-n}d ago`}
+                        </span>
+                      )}
+                      <button type="button" className="btn ask" onClick={() => askManager(p)} title={`Copy a message for ${p.manager || "the manager"}: extend or offboard?`}>
+                        Ask manager
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+              {undecided.length > 3 && (
+                <button type="button" className="linkbtn umore" onClick={() => setShowAllUndecided((v) => !v)}>
+                  {showAllUndecided ? "Show less" : `+${undecided.length - 3} more`}
+                </button>
+              )}
+            </section>
+          )}
           <DateCalendar
             events={calEvents}
             tab={tab}

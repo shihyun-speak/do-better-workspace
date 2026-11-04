@@ -267,9 +267,16 @@
 .hub .session { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 0 10px 14px; margin-bottom: 10px; border-bottom: 1px solid var(--line); font-size: 12px; color: var(--muted); }
 .hub .session span { overflow-wrap: anywhere; }
 .hub .session .btn { padding: 3px 10px; font-size: 12px; }
-/* "Ending soon, nothing filed" at the top of Open items */
-.hub .undecided { margin-bottom: 18px; border-left: 3px solid var(--warn); }
-.hub .undecided .panelhead h2 { display: flex; align-items: center; gap: 8px; }
+/* "Ending soon, nothing filed": compact card above the calendar */
+.hub .undecided { border-left: 3px solid var(--warn); padding-bottom: 8px; }
+.hub .undecided .panelhead { padding-bottom: 4px; }
+.hub .undecided .panelhead h2 { display: flex; align-items: center; gap: 8px; font-size: 14px; margin: 0; }
 .hub .undecided .panelhead h2 .num { font-size: 12px; background: var(--warn-soft); color: var(--warn); padding: 0 7px; border-radius: 999px; }
 .hub .undecided .dday { --tc: var(--muted); --tc-soft: var(--sunk); }
+.hub .ulist { list-style: none; margin: 0; padding: 0 16px; }
+.hub .ulist li { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px dashed var(--line); font-size: 13px; }
+.hub .ulist li:first-child { border-top: 0; }
+.hub .ulist .namebtn { flex: 1; min-width: 0; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hub .ulist .btn.ask { padding: 2px 8px; font-size: 11.5px; }
+.hub .umore { margin: 4px 16px 0; }
 .hub .t-contract { --tc: var(--muted); --tc-soft: var(--sunk); }

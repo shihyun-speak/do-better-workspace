@@ -15,8 +15,8 @@ export const UPDATES: Update[] = [
   {
     date: "2026-11-04",
     kind: "Changed",
-    title: "Ending soon, nothing filed is at the top",
-    body: "Contracts ending in the next 10 working days with no extension or offboarding filed now sit at the top of Open items on every tab, with a countdown and an Ask manager button. It disappears when there are none.",
+    title: "Ending soon, nothing filed, next to the calendar",
+    body: "Contracts ending in the next 10 working days with no extension or offboarding filed now sit in a small card above the calendar on every tab, with a countdown and an Ask manager button. The first 3 show; click +N more for the rest. It disappears when there are none.",
   },
   {
     date: "2026-11-04",
