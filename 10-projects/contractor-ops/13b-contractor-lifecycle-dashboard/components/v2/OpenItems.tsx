@@ -280,16 +280,14 @@ export default function OpenItems({
   }
 
   // Contracts ending within 10 working days with no extension or offboarding
-  // filed: the call is extend or offboard, so they show on both tabs.
-  let undecided: SotEntry[] = [];
-  if (tab === "extension" || tab === "offboarding") {
-    const filed = new Set(
-      [...data.extension, ...data.offboarding].filter((r) => isOpen(r)).map((r) => canonicalName(r.name)),
-    );
-    undecided = data.sot
-      .filter((p) => p.lifecycle === "ending_soon" && inRegion(p.owner, region) && !filed.has(canonicalName(p.name)))
-      .sort((a, b) => (a.endDate || "").localeCompare(b.endDate || ""));
-  }
+  // filed: the call is extend or offboard. Shown at the top of Open items on
+  // every tab (Shihyun, 2026-11-04), hidden when there are none.
+  const filed = new Set(
+    [...data.extension, ...data.offboarding].filter((r) => isOpen(r)).map((r) => canonicalName(r.name)),
+  );
+  const undecided: SotEntry[] = data.sot
+    .filter((p) => p.lifecycle === "ending_soon" && inRegion(p.owner, region) && !filed.has(canonicalName(p.name)))
+    .sort((a, b) => (a.endDate || "").localeCompare(b.endDate || ""));
 
   // Tools requested on the onboarding form; offboarding rows don't carry
   // them, so removal looks up the contractor's latest onboarding row.
@@ -346,10 +344,40 @@ export default function OpenItems({
   return (
     <>
       <div className="pagehead">
-        <span className="preview">Preview</span>
         <h1>Open items</h1>
         <p className="sub">{regionLabel}</p>
       </div>
+      {undecided.length > 0 && (
+        <section className="panel undecided">
+          <div className="panelhead">
+            <h2>Ending soon, nothing filed <span className="num">{undecided.length}</span></h2>
+            <span className="hint">No extension or offboarding yet. Extend or offboard?</span>
+          </div>
+          <ul className="qlist">
+            {undecided.map((p) => {
+              const d = parseDate(p.endDate);
+              const n = d ? daysFromToday(d) : null;
+              return (
+                <li key={p.rowIndex} className="qitem">
+                  <div className="who">
+                    <NameBtn name={p.name} />
+                    <OwnerPill owner={p.owner} country={p.country} />
+                    {n !== null && (
+                      <span className={n < 0 ? "dday past" : n <= 3 ? "dday soon" : "dday"}>
+                        {n > 0 ? `D-${n} to end date` : n === 0 ? "Ends today" : `Ended ${-n} day${n === -1 ? "" : "s"} ago`}
+                      </span>
+                    )}
+                  </div>
+                  <div className="ctx">Ends {fmt(p.endDate, true)}, manager {p.manager || "unknown"}</div>
+                  <div className="actions">
+                    <button type="button" className="btn primary" onClick={() => askManager(p)}>Ask manager</button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
       <div className="typetabs" role="tablist">
         {REQUEST_TYPES.map((t) => (
           <button key={t} type="button" role="tab" className={`t-${t}`} aria-selected={tab === t} onClick={() => { setTab(t); setConfirming(null); }}>
@@ -392,36 +420,6 @@ export default function OpenItems({
               ))
           ) : (
             <p className="panel empty">No open {plan.label.toLowerCase()} requests in {regionLabel}.</p>
-          )}
-          {(tab === "extension" || tab === "offboarding") && (
-            <section className="panel">
-              <div className="panelhead">
-                <h2>Ending soon, nothing filed <span className="num" style={{ color: "var(--faint)", fontSize: 13 }}>{undecided.length}</span></h2>
-                <span className="hint">Extend or offboard?</span>
-              </div>
-              {undecided.length ? (
-                <ul className="qlist">
-                  {undecided.map((p) => {
-                    const wd = p.endDate ? workingDaysUntil(parseDate(p.endDate)!) : null;
-                    return (
-                      <li key={p.rowIndex} className="qitem">
-                        <div className="who">
-                          <NameBtn name={p.name} />
-                          <OwnerPill owner={p.owner} country={p.country} />
-                          {wd !== null && <span className={`due ${wd <= 3 ? "urgent" : ""}`}>{wd < 0 ? `${-wd}d past end` : `${wd}d left`}</span>}
-                        </div>
-                        <div className="ctx">Ends {fmt(p.endDate)}, manager {p.manager || "unknown"}</div>
-                        <div className="actions">
-                          <button type="button" className="btn primary" onClick={() => askManager(p)}>Ask manager</button>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              ) : (
-                <p className="empty">Every contract ending soon has a plan.</p>
-              )}
-            </section>
           )}
         </div>
         <div className="stack">

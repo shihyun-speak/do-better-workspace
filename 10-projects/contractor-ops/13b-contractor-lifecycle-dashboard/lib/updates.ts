@@ -9,6 +9,12 @@ export const UPDATES: Update[] = [
   {
     date: "2026-11-04",
     kind: "Changed",
+    title: "Ending soon, nothing filed is at the top",
+    body: "Contracts ending in the next 10 working days with no extension or offboarding filed now sit at the top of Open items on every tab, with a countdown and an Ask manager button. It disappears when there are none.",
+  },
+  {
+    date: "2026-11-04",
+    kind: "Changed",
     title: "This is now the main page",
     body: "speak-ctr-hojicha.vercel.app opens Contractor Hub. The old table view is still there for now: Classic view (v1) at the bottom of the left sidebar. Old /v2 links still work.",
   },
