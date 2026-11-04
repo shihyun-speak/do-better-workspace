@@ -333,12 +333,22 @@ export default function OpenItems({
   }
 
   // Every open request's key date, all four types, for the shared calendar.
-  const calEvents: CalEvent[] = REQUEST_TYPES.flatMap((t) =>
+  const reqEvents: CalEvent[] = REQUEST_TYPES.flatMap((t) =>
     openOf(t).flatMap((r) => {
       const d = parseDate(KEY_DATE[t][1](r));
-      return d ? [{ r, date: d }] : [];
+      return d ? [{ key: requestKey(r), kind: t, date: d, who: r }] : [];
     }),
   );
+  // Plus the contract end of everyone still active in SoT (not Ended / Void),
+  // unless an open extension or offboarding already puts them on the calendar.
+  const INACTIVE = new Set(["ended", "void", "voided"]);
+  const sotEvents: CalEvent[] = data.sot
+    .filter((p) => !INACTIVE.has((p.rawStatus || "").trim().toLowerCase()) && inRegion(p.owner, region) && !filed.has(canonicalName(p.name)))
+    .flatMap((p) => {
+      const d = parseDate(p.endDate);
+      return d ? [{ key: `sot:${p.rowIndex}`, kind: "contract" as const, date: d, who: p }] : [];
+    });
+  const calEvents = [...reqEvents, ...sotEvents];
   const regionLabel = region === "all" ? "All regions" : region === "apac" ? "APAC" : "US + RoW";
 
   return (
@@ -426,10 +436,10 @@ export default function OpenItems({
           <DateCalendar
             events={calEvents}
             tab={tab}
-            renderWho={(r) => (
+            renderWho={(w) => (
               <>
-                <NameBtn name={r.name} />
-                <OwnerPill owner={r.owner} country={r.country} />
+                <NameBtn name={w.name} />
+                <OwnerPill owner={w.owner} country={w.country} />
               </>
             )}
           />

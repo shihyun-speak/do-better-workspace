@@ -1,22 +1,27 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { RequestEntry, RequestSource } from "@/lib/parsers";
+import type { RequestSource } from "@/lib/parsers";
 import { parseDate } from "@/lib/dates";
-import { requestKey } from "@/lib/plans";
 
 // One month calendar shared by every Open items tab (Shihyun, 2026-11-04):
 // all four request types' key dates, colored by type. The current tab's dates
 // are solid, the rest are softer. Click a day to list just that day.
 
-export const DATE_KIND: Record<RequestSource, string> = {
+export type CalKind = RequestSource | "contract";
+
+export const DATE_KIND: Record<CalKind, string> = {
   onboarding: "Start",
   extension: "Current end",
   offboarding: "Last day",
   rate_change: "Rate effective",
+  // Everyone still active in SoT with no extension / offboarding open
+  // (Shihyun, 2026-11-04), so un-offboarded past end dates show up too.
+  contract: "Contract end",
 };
 
-export type CalEvent = { r: RequestEntry; date: Date };
+export type CalWho = { name: string; owner: string; country: string };
+export type CalEvent = { key: string; kind: CalKind; date: Date; who: CalWho };
 
 const DOW = ["M", "T", "W", "T", "F", "S", "S"];
 const dayKey = (d: Date) => d.toISOString().slice(0, 10);
@@ -31,7 +36,7 @@ export default function DateCalendar({
 }: {
   events: CalEvent[];
   tab: RequestSource;
-  renderWho: (r: RequestEntry) => React.ReactNode;
+  renderWho: (w: CalWho) => React.ReactNode;
 }) {
   const now = new Date();
   const today = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
@@ -101,12 +106,12 @@ export default function DateCalendar({
               className={cls}
               disabled={!evs.length}
               onClick={() => setPicked(picked === k ? null : k)}
-              title={evs.map((e) => `${e.r.name}: ${DATE_KIND[e.r.source]}`).join("\n")}
+              title={evs.map((e) => `${e.who.name}: ${DATE_KIND[e.kind]}`).join("\n")}
             >
               {d.getUTCDate()}
               <span className="dots">
                 {evs.slice(0, 4).map((e) => (
-                  <i key={requestKey(e.r)} className={`t-${e.r.source} ${e.r.source === tab ? "" : "soft"}`} />
+                  <i key={e.key} className={`t-${e.kind} ${e.kind === tab ? "" : "soft"}`} />
                 ))}
               </span>
             </button>
@@ -114,7 +119,7 @@ export default function DateCalendar({
         })}
       </div>
       <div className="callegend">
-        {(Object.keys(DATE_KIND) as RequestSource[]).map((s) => (
+        {(Object.keys(DATE_KIND) as CalKind[]).map((s) => (
           <span key={s} className={`t-${s} ${s === tab ? "" : "soft"}`}><i />{DATE_KIND[s]}</span>
         ))}
       </div>
@@ -127,14 +132,14 @@ export default function DateCalendar({
       <ul className="tl">
         {shown.length ? (
           shown.map((e) => (
-            <li key={requestKey(e.r)} className={`tlrow t-${e.r.source} ${e.r.source === tab ? "" : "other"}`}>
+            <li key={e.key} className={`tlrow t-${e.kind} ${e.kind === tab ? "" : "other"}`}>
               <div className="tldate">
                 <b>{e.date.getUTCDate()}</b>
                 {e.date.toLocaleDateString("en-US", { timeZone: "UTC", month: "short" })}
               </div>
               <div className="who">
-                {renderWho(e.r)}
-                <span className="pill type">{DATE_KIND[e.r.source]}</span>
+                {renderWho(e.who)}
+                <span className="pill type">{DATE_KIND[e.kind]}</span>
               </div>
             </li>
           ))

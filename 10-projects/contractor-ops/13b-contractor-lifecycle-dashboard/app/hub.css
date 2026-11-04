@@ -272,3 +272,4 @@
 .hub .undecided .panelhead h2 { display: flex; align-items: center; gap: 8px; }
 .hub .undecided .panelhead h2 .num { font-size: 12px; background: var(--warn-soft); color: var(--warn); padding: 0 7px; border-radius: 999px; }
 .hub .undecided .dday { --tc: var(--muted); --tc-soft: var(--sunk); }
+.hub .t-contract { --tc: var(--muted); --tc-soft: var(--sunk); }

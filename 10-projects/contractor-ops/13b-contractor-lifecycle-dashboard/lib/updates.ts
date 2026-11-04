@@ -8,6 +8,12 @@ export type Update = { date: string; kind: UpdateKind; title: string; body: stri
 export const UPDATES: Update[] = [
   {
     date: "2026-11-04",
+    kind: "New",
+    title: "Every active contract on the calendar",
+    body: "The calendar now also shows the contract end date of everyone still active in the SoT (grey dots, \"Contract end\"), not just open requests. People past their end date who were never offboarded show up in earlier months; use \"N earlier\" under the list to jump back.",
+  },
+  {
+    date: "2026-11-04",
     kind: "Changed",
     title: "Ending soon, nothing filed is at the top",
     body: "Contracts ending in the next 10 working days with no extension or offboarding filed now sit at the top of Open items on every tab, with a countdown and an Ask manager button. It disappears when there are none.",
