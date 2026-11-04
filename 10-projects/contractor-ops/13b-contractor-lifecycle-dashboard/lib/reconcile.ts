@@ -29,7 +29,10 @@ export type ReconcileResult = {
   errors: { rowIndex: number; name: string; message: string }[];
 };
 
-export async function reconcileSotStatus(): Promise<ReconcileResult> {
+// dryRun: compute flips without writing (used to preview before enabling).
+export async function reconcileSotStatus(
+  { dryRun = false }: { dryRun?: boolean } = {},
+): Promise<ReconcileResult> {
   const entries = await loadSot();
   const flipped: ReconcileResult["flipped"] = [];
   const errors: ReconcileResult["errors"] = [];
@@ -57,7 +60,7 @@ export async function reconcileSotStatus(): Promise<ReconcileResult> {
     if (!target) continue;
 
     try {
-      await writeCell(
+      if (!dryRun) await writeCell(
         `'[SoT] Contractor Tracker'!H${e.rowIndex}`,
         target,
       );

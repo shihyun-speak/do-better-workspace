@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 
-// Paths the gate ignores: login page + NextAuth's own routes.
-const PUBLIC_PREFIXES = ["/login", "/api/auth", "/signout"];
+// Paths the gate ignores: login page + NextAuth's own routes. Cron and
+// hook routes check their own bearer secret (callers have no session cookie).
+const PUBLIC_PREFIXES = ["/login", "/api/auth", "/signout", "/api/contractors/cron", "/api/hooks"];
 
 function isPublic(pathname: string): boolean {
   return PUBLIC_PREFIXES.some(

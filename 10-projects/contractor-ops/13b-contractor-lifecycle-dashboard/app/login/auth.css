@@ -1,0 +1,19 @@
+/* Login / signed-out page, matching /v2 (uses the .hub tokens from hub.css). */
+.hub .auth { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px 16px; }
+.hub .authcard { width: 100%; max-width: 380px; background: var(--surface); border: 1px solid var(--line); border-top: 3px solid var(--accent); border-radius: 12px; padding: 24px; display: flex; flex-direction: column; gap: 14px; }
+.hub .authsub { margin: -6px 0 0; color: var(--muted); font-size: 13.5px; }
+.hub .btn.wide { width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 9px 12px; }
+.hub .btn.trigger { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.hub .btn.trigger:hover { filter: brightness(1.08); }
+.hub a.btn { text-decoration: none; color: var(--ink); display: inline-flex; align-items: center; }
+.hub .note { border-radius: 8px; padding: 10px 12px; font-size: 12.5px; }
+.hub .note p { margin: 4px 0 0; }
+.hub .note.bad { background: var(--bad-soft); color: var(--bad); }
+.hub .note.ok { background: var(--ok-soft); color: var(--ok); }
+.hub .authform { display: flex; flex-direction: column; gap: 12px; }
+.hub .authform label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 500; color: var(--muted); }
+.hub .authform input, .hub .authform textarea { font: inherit; font-size: 13.5px; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; }
+.hub .authform textarea { resize: vertical; }
+.hub .authactions { display: flex; gap: 8px; }
+.hub .authfoot { margin: 0; text-align: center; font-size: 12px; color: var(--faint); }
+.hub .authfoot a { color: var(--muted); }

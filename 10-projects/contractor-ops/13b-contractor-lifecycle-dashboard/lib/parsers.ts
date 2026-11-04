@@ -49,6 +49,12 @@ export type RequestEntry = {
   manager: string;
   approver: string;
   status: string;
+  /**
+   * True when the row's status is a terminal one for its tab (e.g. Onboarding
+   * "Active", Offboarding "Completed"). Still surfaced in the UI but pinned
+   * to the bottom and greyed out — kept as a reference, not a todo.
+   */
+  closed: boolean;
   startDate: string | null;
   endDate: string | null;
   newEndDate: string | null;
@@ -58,12 +64,46 @@ export type RequestEntry = {
   owner: Owner;
   /** 1-based row number in the source sheet — needed to write back to col A. */
   rowIndex: number;
+  /** Onboarding only: from the request form. */
+  /** Contractor's personal email (Onboarding col E). */
+  email?: string;
+  jobTitle?: string;
+  department?: string;
+  scopeOfWork?: string;
+  paymentType?: string;
+  paymentRate?: string;
+  maxWeeklyHours?: string;
+  saasTools?: string;
+  workingLocation?: string;
+  /** Offboarding only. */
+  terminationReason?: string;
+  notifiedFlag?: string;
+  /** Rate Change only. */
+  newPaymentRate?: string;
+  /** Extension only: answer to "Has the scope of work and/or payment rate changed?". */
+  scopeOrRateChanged?: string;
+  /** ISO date of the form submission (from Form Responses timestamp), if known. */
+  requestedAt?: string | null;
 };
 
 const CLOSED_ONBOARDING = new Set(["active", "ended", "void"]);
 const CLOSED_EXTENSION = new Set(["active", "void"]);
 const CLOSED_OFFBOARDING = new Set(["completed", "void", "#ref!"]);
 const CLOSED_RATE_CHANGE = new Set(["completed", "void"]);
+
+/**
+ * Whether a (source, status) pair counts as terminal for that request tab.
+ * Mirrors the per-tab logic used by each loader so the UI can recompute the
+ * `closed` flag after an optimistic status edit without re-fetching.
+ */
+export function isClosedStatus(source: RequestSource, status: string): boolean {
+  const s = status.trim().toLowerCase();
+  if (source === "onboarding") return CLOSED_ONBOARDING.has(s);
+  if (source === "extension") return CLOSED_EXTENSION.has(s);
+  if (source === "offboarding") return CLOSED_OFFBOARDING.has(s);
+  if (source === "rate_change") return CLOSED_RATE_CHANGE.has(s);
+  return false;
+}
 
 function pad(row: string[], len: number): string[] {
   if (row.length < len) return [...row, ...Array(len - row.length).fill("")];
@@ -73,6 +113,24 @@ function pad(row: string[], len: number): string[] {
 function isoDate(s: string | undefined | null): string | null {
   const d = parseDate(s);
   return d ? d.toISOString().slice(0, 10) : null;
+}
+
+/**
+ * Pop the most recent timestamp for a given (canonical name, request type)
+ * from the requestTimestamps map. Mutates the map's value array so subsequent
+ * rows of the same name+type get the next-most-recent timestamp. Returns
+ * null if no match.
+ */
+function popTimestamp(
+  timestamps: Map<string, string[]> | undefined,
+  name: string,
+  kind: RequestSource,
+): string | null {
+  if (!timestamps || !name) return null;
+  const key = `${name}::${kind}`;
+  const list = timestamps.get(key);
+  if (!list || list.length === 0) return null;
+  return list.shift() || null;
 }
 
 export async function loadCountryLookup(): Promise<{
@@ -95,7 +153,52 @@ export async function loadCountryLookup(): Promise<{
   return { byName, bySubmissionTime };
 }
 
-function classifySot(
+/**
+ * Returns a Map keyed by `${canonical-name}::${request-type}` → array of ISO
+ * dates (newest first), one per Form Responses row matching that key. Used to
+ * stamp each request-tab row with its submission date.
+ *
+ * Form Responses col A = Timestamp, D = Contractor's Full Name, E = request type.
+ * Request types in the form (col E):
+ *   "Onboarding a New Contractor"  → "onboarding"
+ *   "Current Contractor Extension" → "extension"
+ *   "Offboarding a Contractor"     → "offboarding"
+ *   "Contractor Rate Change"       → "rate_change"
+ */
+export async function loadRequestTimestamps(): Promise<Map<string, string[]>> {
+  const rows = await readRange("'Form Responses'!A:E");
+  const out = new Map<string, string[]>();
+  for (const raw of rows.slice(1)) {
+    const row = pad(raw, 5);
+    const ts = row[0]?.trim();
+    const name = canonicalName(row[3]);
+    const formType = (row[4] || "").toLowerCase();
+    if (!ts || !name) continue;
+    let kind: RequestSource | null = null;
+    if (formType.includes("onboarding")) kind = "onboarding";
+    else if (formType.includes("extension")) kind = "extension";
+    else if (formType.includes("offboarding") || formType.includes("termination")) {
+      kind = "offboarding";
+    } else if (formType.includes("rate")) kind = "rate_change";
+    if (!kind) continue;
+    const iso = isoDate(ts);
+    if (!iso) continue;
+    const key = `${name}::${kind}`;
+    const list = out.get(key) || [];
+    list.push(iso);
+    out.set(key, list);
+  }
+  // Sort each list oldest-first. The request tabs are populated in form-
+  // submission order (top→bottom = oldest→newest), so popTimestamp consumes
+  // them in the same order — first row in the tab gets the earliest
+  // matching submission, last row gets the most recent.
+  for (const [, list] of out) {
+    list.sort((a, b) => a.localeCompare(b));
+  }
+  return out;
+}
+
+export function classifySot(
   rawStatus: string,
   endDate: string | null,
   rowHasError: boolean,
@@ -197,18 +300,20 @@ function approverFromSot(sot: SotEntry[]): Map<string, string> {
 export async function loadOnboarding(
   sot: SotEntry[],
   countries: Map<string, string>,
+  requestTimestamps?: Map<string, string[]>,
 ): Promise<RequestEntry[]> {
-  const rows = await readRange("Onboarding!A:O");
+  const rows = await readRange("Onboarding!A:R");
   if (rows.length < 2) return [];
   const approver = approverFromSot(sot);
   const out: RequestEntry[] = [];
   for (let i = 1; i < rows.length; i++) {
-    const row = pad(rows[i], 15);
+    const row = pad(rows[i], 18);
     const status = (row[0] || "").trim();
-    if (CLOSED_ONBOARDING.has(status.toLowerCase())) continue;
     const name = (row[3] || "").trim();
     if (!name) continue;
+    const closed = CLOSED_ONBOARDING.has(status.toLowerCase());
     const country = countries.get(canonicalName(name)) || "";
+    const requestedAt = popTimestamp(requestTimestamps, canonicalName(name), "onboarding");
     out.push({
       source: "onboarding",
       requestType: "Onboarding",
@@ -216,6 +321,8 @@ export async function loadOnboarding(
       manager: (row[2] || "").trim(),
       approver: approver.get(canonicalName(name)) || "",
       status,
+      closed,
+      requestedAt,
       startDate: isoDate(row[13]),
       endDate: isoDate(row[14]),
       newEndDate: null,
@@ -224,6 +331,15 @@ export async function loadOnboarding(
       country,
       owner: ownerFor(country),
       rowIndex: i + 1,
+      email: (row[4] || "").trim(),
+      department: (row[5] || "").trim(),
+      jobTitle: (row[8] || "").trim(),
+      scopeOfWork: (row[9] || "").trim(),
+      paymentType: (row[10] || "").trim(),
+      paymentRate: (row[11] || "").trim(),
+      maxWeeklyHours: (row[12] || "").trim(),
+      saasTools: (row[15] || "").trim(),
+      workingLocation: (row[16] || "").trim(),
     });
   }
   return out;
@@ -232,27 +348,37 @@ export async function loadOnboarding(
 export async function loadExtension(
   sot: SotEntry[],
   countries: Map<string, string>,
+  requestTimestamps?: Map<string, string[]>,
 ): Promise<RequestEntry[]> {
   const rows = await readRange("Extension!A:F");
   if (rows.length < 2) return [];
   const approver = approverFromSot(sot);
   const priorEnds = await loadPriorEndDates();
-  const byName = new Map<string, RequestEntry>();
+  const onboardingByName = await loadOnboardingDetailsByName();
+  const sotJobTitleByName = new Map<string, string>();
+  for (const e of sot) {
+    if (e.jobTitle) sotJobTitleByName.set(canonicalName(e.name), e.jobTitle);
+  }
+  const out: RequestEntry[] = [];
   for (let i = 1; i < rows.length; i++) {
     const row = pad(rows[i], 6);
     const status = (row[0] || "").trim();
-    if (CLOSED_EXTENSION.has(status.toLowerCase())) continue;
     const name = (row[3] || "").trim();
     if (!name) continue;
+    const closed = CLOSED_EXTENSION.has(status.toLowerCase());
     const key = canonicalName(name);
     const country = countries.get(key) || "";
-    byName.set(key, {
+    const onbDetails = onboardingByName.get(key);
+    const requestedAt = popTimestamp(requestTimestamps, key, "extension");
+    out.push({
       source: "extension",
       requestType: "Extension",
       name,
       manager: (row[2] || "").trim(),
       approver: approver.get(key) || "",
       status,
+      closed,
+      requestedAt,
       startDate: null,
       endDate: null,
       newEndDate: isoDate(row[4]),
@@ -261,9 +387,47 @@ export async function loadExtension(
       country,
       owner: ownerFor(country),
       rowIndex: i + 1,
+      jobTitle: sotJobTitleByName.get(key) || onbDetails?.jobTitle,
+      scopeOfWork: onbDetails?.scopeOfWork,
+      paymentRate: onbDetails?.paymentRate,
+      scopeOrRateChanged: (row[5] || "").trim(),
     });
   }
-  return Array.from(byName.values());
+  return out;
+}
+
+/**
+ * Onboarding details keyed by contractor canonical name — used by Extension
+ * to surface Job Title / Scope / Payment Rate from the original onboarding
+ * row. Reads the same A:R range as `loadOnboarding`. If a person has multiple
+ * onboarding rows, the last one wins (latest record).
+ */
+async function loadOnboardingDetailsByName(): Promise<
+  Map<
+    string,
+    {
+      jobTitle: string;
+      scopeOfWork: string;
+      paymentRate: string;
+    }
+  >
+> {
+  const out = new Map<
+    string,
+    { jobTitle: string; scopeOfWork: string; paymentRate: string }
+  >();
+  const rows = await readRange("Onboarding!A:R");
+  for (let i = 1; i < rows.length; i++) {
+    const row = pad(rows[i], 18);
+    const name = (row[3] || "").trim();
+    if (!name) continue;
+    out.set(canonicalName(name), {
+      jobTitle: (row[8] || "").trim(),
+      scopeOfWork: (row[9] || "").trim(),
+      paymentRate: (row[11] || "").trim(),
+    });
+  }
+  return out;
 }
 
 async function loadPriorEndDates(): Promise<Map<string, string>> {
@@ -291,26 +455,30 @@ async function loadPriorEndDates(): Promise<Map<string, string>> {
 export async function loadOffboarding(
   sot: SotEntry[],
   countries: Map<string, string>,
+  requestTimestamps?: Map<string, string[]>,
 ): Promise<RequestEntry[]> {
   const rows = await readRange("Offboarding!A:H");
   if (rows.length < 2) return [];
   const approver = approverFromSot(sot);
-  const byName = new Map<string, RequestEntry>();
+  const out: RequestEntry[] = [];
   for (let i = 1; i < rows.length; i++) {
     const row = pad(rows[i], 8);
     const status = (row[0] || "").trim();
-    if (CLOSED_OFFBOARDING.has(status.toLowerCase())) continue;
     const name = (row[3] || "").trim();
     if (!name) continue;
+    const closed = CLOSED_OFFBOARDING.has(status.toLowerCase());
     const key = canonicalName(name);
     const country = countries.get(key) || "";
-    byName.set(key, {
+    const requestedAt = popTimestamp(requestTimestamps, key, "offboarding");
+    out.push({
       source: "offboarding",
       requestType: "Offboarding",
       name,
       manager: (row[2] || "").trim(),
       approver: approver.get(key) || "",
       status,
+      closed,
+      requestedAt,
       startDate: null,
       endDate: isoDate(row[4]),
       newEndDate: null,
@@ -319,34 +487,40 @@ export async function loadOffboarding(
       country,
       owner: ownerFor(country),
       rowIndex: i + 1,
+      terminationReason: (row[5] || "").trim(),
+      notifiedFlag: (row[7] || "").trim(),
     });
   }
-  return Array.from(byName.values());
+  return out;
 }
 
 export async function loadRateChange(
   sot: SotEntry[],
   countries: Map<string, string>,
+  requestTimestamps?: Map<string, string[]>,
 ): Promise<RequestEntry[]> {
   const rows = await readRange("'Rate Change'!A:I");
   if (rows.length < 2) return [];
   const approver = approverFromSot(sot);
-  const byName = new Map<string, RequestEntry>();
+  const out: RequestEntry[] = [];
   for (let i = 1; i < rows.length; i++) {
     const row = pad(rows[i], 9);
     const status = (row[0] || "").trim();
-    if (CLOSED_RATE_CHANGE.has(status.toLowerCase())) continue;
     const name = (row[3] || "").trim();
     if (!name) continue;
+    const closed = CLOSED_RATE_CHANGE.has(status.toLowerCase());
     const key = canonicalName(name);
     const country = countries.get(key) || "";
-    byName.set(key, {
+    const requestedAt = popTimestamp(requestTimestamps, key, "rate_change");
+    out.push({
       source: "rate_change",
       requestType: "Rate Change",
       name,
       manager: (row[2] || "").trim(),
       approver: approver.get(key) || "",
       status,
+      closed,
+      requestedAt,
       startDate: null,
       endDate: null,
       newEndDate: null,
@@ -355,9 +529,10 @@ export async function loadRateChange(
       country,
       owner: ownerFor(country),
       rowIndex: i + 1,
+      newPaymentRate: (row[4] || "").trim(),
     });
   }
-  return Array.from(byName.values());
+  return out;
 }
 
 export type DashboardData = {
@@ -370,12 +545,16 @@ export type DashboardData = {
 };
 
 export async function loadAll(): Promise<DashboardData> {
-  const [sot, countries] = await Promise.all([loadSot(), loadCountryLookup()]);
+  const [sot, countries, requestTimestamps] = await Promise.all([
+    loadSot(),
+    loadCountryLookup(),
+    loadRequestTimestamps(),
+  ]);
   const [onboarding, extension, offboarding, rateChange] = await Promise.all([
-    loadOnboarding(sot, countries.byName),
-    loadExtension(sot, countries.byName),
-    loadOffboarding(sot, countries.byName),
-    loadRateChange(sot, countries.byName),
+    loadOnboarding(sot, countries.byName, requestTimestamps),
+    loadExtension(sot, countries.byName, requestTimestamps),
+    loadOffboarding(sot, countries.byName, requestTimestamps),
+    loadRateChange(sot, countries.byName, requestTimestamps),
   ]);
   return {
     fetchedAt: new Date().toISOString(),

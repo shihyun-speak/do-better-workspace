@@ -1,11 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { DashboardData, RequestEntry, RequestSource, SotEntry } from "@/lib/parsers";
+import { classifySot, isClosedStatus } from "@/lib/parsers";
 import type { Owner } from "@/lib/owners";
-import { ownerLabel } from "@/lib/owners";
-import { fmtDate, workingDaysUntil } from "@/lib/dates";
+import { canonicalName, formatCountry, ownerLabel } from "@/lib/owners";
+import { fmtDate, fmtDateShort, workingDaysUntil } from "@/lib/dates";
+import ActivityLog from "@/components/ActivityLog";
 
 type TabKey =
   | "sot"
@@ -13,7 +15,8 @@ type TabKey =
   | "extension"
   | "offboarding"
   | "rate_change"
-  | "inactive";
+  | "inactive"
+  | "activity";
 
 const STATUS_OPTIONS: Record<RequestSource, string[]> = {
   onboarding: ["Pending", "Action Required", "Active", "Ended", "Void"],
@@ -76,6 +79,7 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "offboarding", label: "Offboarding" },
   { key: "rate_change", label: "Rate Change" },
   { key: "inactive", label: "Inactive" },
+  { key: "activity", label: "Activity" },
 ];
 
 const OWNER_FILTERS: { key: Owner | "all"; label: string }[] = [
@@ -102,7 +106,47 @@ export default function Dashboard({
   // until the next fetch reflects the change.
   const [overrides, setOverrides] = useState<Record<string, string>>({});
   const [sotOverrides, setSotOverrides] = useState<Record<string, string>>({});
+  // Optimistic end-date overrides for SoT col G — set when a request-tab
+  // status change (Extension → Active, early Offboarding) triggers the
+  // server-side end-date sync. Keyed by `sot:${rowIndex}` → ISO date.
+  const [sotEndOverrides, setSotEndOverrides] = useState<Record<string, string>>({});
   const [refreshing, setRefreshing] = useState(false);
+  // Bumped on Refresh so the Activity tab re-fetches the automation log.
+  const [activityReloadKey, setActivityReloadKey] = useState(0);
+
+  // Hidden-column preferences per tab, persisted in localStorage. Lives in
+  // the parent so the Columns toggle button can sit in the filter row,
+  // separate from the table it controls.
+  const [hiddenColsByTab, setHiddenColsByTab] = useState<Record<string, Set<string>>>(
+    {},
+  );
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const merged: Record<string, Set<string>> = {};
+      for (const t of ["onboarding", "extension", "offboarding", "rate_change"]) {
+        const raw = localStorage.getItem(`req-cols-hidden:${t}`);
+        merged[t] = raw ? new Set(JSON.parse(raw) as string[]) : new Set();
+      }
+      setHiddenColsByTab(merged);
+    } catch {
+      /* ignore corrupt localStorage */
+    }
+  }, []);
+  const toggleColVisibility = (tabKey: string, key: string) => {
+    setHiddenColsByTab((prev) => {
+      const current = new Set(prev[tabKey] || []);
+      if (current.has(key)) current.delete(key);
+      else current.add(key);
+      const next = { ...prev, [tabKey]: current };
+      try {
+        localStorage.setItem(`req-cols-hidden:${tabKey}`, JSON.stringify(Array.from(current)));
+      } catch {
+        /* ignore quota errors */
+      }
+      return next;
+    });
+  };
 
   const data = initialData;
 
@@ -115,6 +159,8 @@ export default function Dashboard({
       // Drop optimistic overrides — incoming data is the new truth.
       setOverrides({});
       setSotOverrides({});
+      setSotEndOverrides({});
+      setActivityReloadKey((k) => k + 1);
       router.refresh();
     } finally {
       // Give the rerender a beat to settle so the spinner doesn't flash.
@@ -122,29 +168,120 @@ export default function Dashboard({
     }
   }
 
+  /**
+   * For each SoT contractor, find their earliest pending change to the
+   * contract end date. A "pending change" is an Extension or Offboarding row
+   * whose status is Pending / Action Required / blank (not Active/Completed/
+   * Void). Offboarding only counts if its End Date is earlier than the
+   * current SoT End Date (otherwise it doesn't shorten the timeline).
+   * Returns Map<canonical name, { proposedEnd, source }>.
+   */
+  const pendingEndChange = useMemo(() => {
+    if (!data) return new Map<string, { proposedEnd: string; source: "extension" | "offboarding" }>();
+    const isPending = (s: string) => {
+      const lower = s.trim().toLowerCase();
+      return lower === "" || lower === "pending" || lower === "action required";
+    };
+    // Use override-merged status so an optimistic flip (e.g. Extension Active
+    // → Pending in the request tab) takes effect on Active Roster's
+    // current→proposed arrow without waiting for a refresh.
+    const statusFor = (e: RequestEntry) =>
+      overrides[`${e.source}:${e.rowIndex}`] ?? e.status;
+
+    const sotEndByName = new Map<string, string | null>();
+    for (const e of data.sot) {
+      sotEndByName.set(canonicalName(e.name), e.endDate);
+    }
+
+    // Build a map of the most recent Active extension submission date per
+    // contractor. A Pending extension older than this is "stale" — it was
+    // superseded by a later approved extension but never voided. Showing it
+    // as a current→proposed arrow misleads, so we ignore those.
+    const latestActiveExtAt = new Map<string, string>();
+    for (const ext of data.extension) {
+      if (statusFor(ext).trim().toLowerCase() !== "active") continue;
+      if (!ext.requestedAt) continue;
+      const key = canonicalName(ext.name);
+      const prev = latestActiveExtAt.get(key);
+      if (!prev || ext.requestedAt > prev) {
+        latestActiveExtAt.set(key, ext.requestedAt);
+      }
+    }
+
+    const out = new Map<string, { proposedEnd: string; source: "extension" | "offboarding" }>();
+    const consider = (
+      key: string,
+      candidate: string,
+      source: "extension" | "offboarding",
+    ) => {
+      const prev = out.get(key);
+      if (!prev || candidate < prev.proposedEnd) {
+        out.set(key, { proposedEnd: candidate, source });
+      }
+    };
+    for (const ext of data.extension) {
+      if (!isPending(statusFor(ext)) || !ext.newEndDate) continue;
+      const key = canonicalName(ext.name);
+      // Skip if the proposed end matches the current SoT end — no actual
+      // change is being proposed (e.g. SoT was already updated manually).
+      const currentEnd = sotEndByName.get(key);
+      if (currentEnd && ext.newEndDate === currentEnd) continue;
+      // Skip stale Pending extensions superseded by a later Active one.
+      const newestActive = latestActiveExtAt.get(key);
+      if (newestActive && ext.requestedAt && ext.requestedAt < newestActive) {
+        continue;
+      }
+      consider(key, ext.newEndDate, "extension");
+    }
+    for (const off of data.offboarding) {
+      if (!isPending(statusFor(off)) || !off.endDate) continue;
+      const key = canonicalName(off.name);
+      const currentEnd = sotEndByName.get(key);
+      if (currentEnd && off.endDate >= currentEnd) continue;
+      consider(key, off.endDate, "offboarding");
+    }
+    return out;
+  }, [data, overrides]);
+
   const sotPartitions = useMemo(() => {
     if (!data) return { active: [], inactive: [] };
     const active: SotEntry[] = [];
     const inactive: SotEntry[] = [];
     for (const r of data.sot) {
-      const override = sotOverrides[`sot:${r.rowIndex}`];
-      const merged = override
-        ? { ...r, rawStatus: override, displayStatus: override }
-        : r;
+      const key = `sot:${r.rowIndex}`;
+      const statusOverride = sotOverrides[key];
+      const endOverride = sotEndOverrides[key];
+      const rawStatus = statusOverride ?? r.rawStatus;
+      const endDate = endOverride ?? r.endDate;
+      // Re-run the classifier so an overridden status/end date moves the row
+      // between active and inactive (e.g. "Ended" → drop to Inactive tab).
+      const { lifecycle, displayStatus } = classifySot(
+        rawStatus,
+        endDate,
+        false,
+      );
+      const merged: SotEntry =
+        statusOverride || endOverride
+          ? { ...r, rawStatus, endDate, lifecycle, displayStatus }
+          : r;
       if (merged.lifecycle === "inactive") inactive.push(merged);
       else active.push(merged);
     }
     return { active, inactive };
-  }, [data, sotOverrides]);
+  }, [data, sotOverrides, sotEndOverrides]);
 
   const counts = useMemo(() => {
     if (!data) return null;
+    // Tab counts reflect *open* requests only — closed/completed rows are
+    // visible in the table (greyed-out at the bottom) but don't inflate the
+    // badge number, which exists to flag "you have N things to act on".
+    const openOnly = (rows: RequestEntry[]) => rows.filter((r) => !r.closed).length;
     return {
       sot: sotPartitions.active.length,
-      onboarding: data.onboarding.length,
-      extension: data.extension.length,
-      offboarding: data.offboarding.length,
-      rate_change: data.rateChange.length,
+      onboarding: openOnly(data.onboarding),
+      extension: openOnly(data.extension),
+      offboarding: openOnly(data.offboarding),
+      rate_change: openOnly(data.rateChange),
       inactive: sotPartitions.inactive.length,
     };
   }, [data, sotPartitions]);
@@ -178,7 +315,7 @@ export default function Dashboard({
             }`}
           >
             {t.label}
-            {counts && (
+            {counts && t.key !== "activity" && (
               <span className={`ml-2 ${tab === t.key ? "text-slate-300" : "text-slate-400"}`}>
                 {counts[t.key]}
               </span>
@@ -188,6 +325,7 @@ export default function Dashboard({
       </nav>
 
       <div className="flex flex-wrap items-center gap-3">
+        {tab !== "activity" && (
         <div className="flex flex-wrap gap-2">
           {OWNER_FILTERS.map((f) => (
             <button
@@ -204,6 +342,7 @@ export default function Dashboard({
             </button>
           ))}
         </div>
+        )}
         <input
           type="search"
           value={search}
@@ -211,15 +350,25 @@ export default function Dashboard({
           placeholder="Search name, manager, country…"
           className="ml-auto w-full max-w-xs rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none"
         />
+        {getExtraDefsFor(tab).length > 0 && (
+          <ColumnsToggle
+            defs={getExtraDefsFor(tab).map((d) => ({ key: d.key, label: d.label }))}
+            hidden={hiddenColsByTab[tab] || new Set()}
+            onToggle={(key) => toggleColVisibility(tab, key)}
+          />
+        )}
       </div>
 
       <section>
-        {tab === "sot" ? (
+        {tab === "activity" ? (
+          <ActivityLog search={search} reloadKey={activityReloadKey} />
+        ) : tab === "sot" ? (
           <SotTable
             rows={sotPartitions.active}
             ownerFilter={ownerFilter}
             search={search}
             mode="active"
+            pendingEndChange={pendingEndChange}
             onStatusChange={(entry, next) =>
               handleSotStatusChange(entry, next, setSotOverrides)
             }
@@ -249,8 +398,15 @@ export default function Dashboard({
             ownerFilter={ownerFilter}
             search={search}
             tab={tab}
+            hiddenCols={hiddenColsByTab[tab] || new Set()}
             onStatusChange={(entry, next) =>
-              handleStatusChange(entry, next, setOverrides)
+              handleStatusChange(
+                entry,
+                next,
+                setOverrides,
+                setSotOverrides,
+                setSotEndOverrides,
+              )
             }
           />
         )}
@@ -270,7 +426,10 @@ function applyOverrides(
   if (Object.keys(overrides).length === 0) return rows;
   return rows.map((r) => {
     const o = overrides[entryKey(r)];
-    return o ? { ...r, status: o } : r;
+    if (!o) return r;
+    // Recompute closed too so an optimistic status flip moves the row between
+    // the open and "completed" sections without waiting for a refresh.
+    return { ...r, status: o, closed: isClosedStatus(r.source, o) };
   });
 }
 
@@ -278,6 +437,8 @@ async function handleStatusChange(
   entry: RequestEntry,
   next: string,
   setOverrides: React.Dispatch<React.SetStateAction<Record<string, string>>>,
+  setSotOverrides: React.Dispatch<React.SetStateAction<Record<string, string>>>,
+  setSotEndOverrides: React.Dispatch<React.SetStateAction<Record<string, string>>>,
 ) {
   const k = entryKey(entry);
   const previous = entry.status;
@@ -296,6 +457,22 @@ async function handleStatusChange(
     if (!res.ok) {
       const j = await res.json().catch(() => ({}));
       throw new Error(j.error || `HTTP ${res.status}`);
+    }
+    // Apply server-reported SoT side-effects optimistically so Active Roster
+    // reflects the change without waiting for the next read-cache cycle.
+    const body = (await res.json().catch(() => ({}))) as {
+      sotSync?: { rowIndex: number; status: string } | null;
+      sotEndSync?: { rowIndex: number; from: string | null; to: string } | null;
+    };
+    if (body.sotSync) {
+      const sotKey = `sot:${body.sotSync.rowIndex}`;
+      const status = body.sotSync.status;
+      setSotOverrides((m) => ({ ...m, [sotKey]: status }));
+    }
+    if (body.sotEndSync) {
+      const sotKey = `sot:${body.sotEndSync.rowIndex}`;
+      const iso = body.sotEndSync.to;
+      setSotEndOverrides((m) => ({ ...m, [sotKey]: iso }));
     }
   } catch (err) {
     setOverrides((m) => ({ ...m, [k]: previous }));
@@ -355,7 +532,13 @@ function Header({
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <p className="text-xs text-slate-400">
-          Updated {new Date(fetchedAt).toLocaleString()}
+          Updated {new Date(fetchedAt).toLocaleString("en-US", {
+            month: "2-digit",
+            day: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
         </p>
         <button
           type="button"
@@ -371,6 +554,12 @@ function Header({
           </span>
           {refreshing ? "Refreshing…" : "Refresh"}
         </button>
+        <a
+          href="/"
+          className="inline-flex items-center gap-1.5 rounded-md bg-slate-900 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-slate-800"
+        >
+          New view
+        </a>
         {viewer && <SignOutButton email={viewer.email} />}
       </div>
     </header>
@@ -402,37 +591,57 @@ function ErrorBanner({ message }: { message: string }) {
   );
 }
 
-function ownerBadgeColor(owner: Owner): string {
-  if (owner === "apac") return "bg-emerald-100 text-emerald-800";
-  if (owner === "row") return "bg-sky-100 text-sky-800";
-  return "bg-slate-200 text-slate-700";
+type RegionTag = "APAC" | "US" | "RoW" | "?";
+
+/**
+ * Derive a more specific region pill for display. Owner routing (apac vs row)
+ * stays the same — Hemmi owns both US and RoW — but a US contractor gets a
+ * "US" pill instead of "RoW" so the table doesn't mislabel them.
+ */
+function regionTagFor(owner: Owner, country: string | undefined | null): RegionTag {
+  if (owner === "apac") return "APAC";
+  if (owner === "unknown") return "?";
+  const formatted = formatCountry(country);
+  if (formatted.startsWith("US,") || /^united\s*states/i.test(country?.trim() || "")) {
+    return "US";
+  }
+  return "RoW";
 }
 
 function urgencyBadge(workingDays: number | null): {
   label: string;
+  tooltip: string;
   cls: string;
 } | null {
   if (workingDays === null) return null;
   if (workingDays < 0) {
+    const abs = Math.abs(workingDays);
     return {
-      label: `${Math.abs(workingDays)} working day${Math.abs(workingDays) === 1 ? "" : "s"} ago`,
-      cls: "bg-rose-100 text-rose-800",
+      label: `${abs}d ago`,
+      tooltip: `${abs} working day${abs === 1 ? "" : "s"} ago`,
+      // "Past end date" is a different category from "ending soon" — render
+      // in neutral dark slate so it doesn't compete with the red severity
+      // signal used for upcoming end dates.
+      cls: "bg-slate-800 text-white",
     };
   }
   if (workingDays <= 7) {
     return {
-      label: `${workingDays} working day${workingDays === 1 ? "" : "s"} left`,
+      label: `${workingDays}d left`,
+      tooltip: `${workingDays} working day${workingDays === 1 ? "" : "s"} left`,
       cls: "bg-rose-100 text-rose-800",
     };
   }
   if (workingDays <= 14) {
     return {
-      label: `${workingDays} working days left`,
+      label: `${workingDays}d left`,
+      tooltip: `${workingDays} working days left`,
       cls: "bg-amber-100 text-amber-800",
     };
   }
   return {
-    label: `${workingDays} working days left`,
+    label: `${workingDays}d left`,
+    tooltip: `${workingDays} working days left`,
     cls: "bg-slate-100 text-slate-700",
   };
 }
@@ -443,10 +652,126 @@ function matchesSearch(haystacks: (string | null | undefined)[], needle: string)
   return haystacks.some((h) => (h || "").toLowerCase().includes(n));
 }
 
+/**
+ * Best-effort display formatter for payment rate. The form is freeform, so
+ * users type values like "$85/hr", "85 per hour", "32", "₩4,000,000/mo".
+ * Rules:
+ *   - If the value already contains a currency symbol, leave it alone.
+ *   - If it's a bare number (e.g. "32"), prefix "$".
+ *   - Append payment type ("Hourly" → "/hr", "Monthly" → "/mo") only if the
+ *     rate doesn't already mention a period.
+ */
+/**
+ * Whether a value is real content vs. an error / placeholder. Sheet errors
+ * (`#N/A`, `#REF!`, etc.) shouldn't appear in subtitles or get joined into
+ * a `· #N/A` string that wastes a row of vertical space.
+ */
+function isMeaningfulText(v: string | undefined | null): v is string {
+  if (!v) return false;
+  const trimmed = v.trim();
+  if (!trimmed) return false;
+  return !/^#(N\/A|REF!|VALUE!|NAME\?|DIV\/0!|NULL!|NUM!|ERROR!)/i.test(trimmed);
+}
+
+function formatPaymentRate(
+  rate: string | undefined,
+  paymentType?: string,
+): string | undefined {
+  if (!rate || !rate.trim()) return undefined;
+  let display = rate.trim();
+  const hasCurrency = /[$€£¥₩]/.test(display);
+  const isBareNumber = /^[\d,]+(\.\d+)?$/.test(display);
+  if (!hasCurrency && isBareNumber) {
+    display = `$${display}`;
+  }
+  const hasPeriod = /\/(hr|hour|day|week|wk|month|mo|year|yr)/i.test(display) ||
+    /per\s+(hour|day|week|month|year)/i.test(display);
+  if (!hasPeriod && paymentType) {
+    const t = paymentType.toLowerCase();
+    if (t.includes("hour")) display += "/hr";
+    else if (t.includes("month")) display += "/mo";
+    else if (t.includes("project")) display += " (project)";
+  }
+  return display;
+}
+
+type ExtraDef = {
+  key: string;
+  label: string;
+  pick: (r: RequestEntry) => string | undefined;
+};
+
+/**
+ * Per-tab list of extra columns shown after the standard ones. Centralized
+ * so the parent's Columns toggle and the table can share the same list.
+ */
+function getExtraDefsFor(tab: TabKey): ExtraDef[] {
+  if (tab === "onboarding") {
+    return [
+      { key: "scope", label: "Scope", pick: (r) => r.scopeOfWork },
+      { key: "paymentRate", label: "Payment rate", pick: (r) => formatPaymentRate(r.paymentRate, r.paymentType) },
+      { key: "workingLocation", label: "Working location", pick: (r) => r.workingLocation },
+      { key: "saasTools", label: "SaaS tools", pick: (r) => r.saasTools },
+    ];
+  }
+  if (tab === "extension") {
+    return [
+      { key: "scope", label: "Scope", pick: (r) => r.scopeOfWork },
+      { key: "paymentRate", label: "Payment rate", pick: (r) => formatPaymentRate(r.paymentRate, r.paymentType) },
+      { key: "scopeOrRateChanged", label: "Scope/rate changed?", pick: (r) => r.scopeOrRateChanged },
+    ];
+  }
+  if (tab === "offboarding") {
+    return [
+      { key: "reason", label: "Reason", pick: (r) => r.terminationReason },
+      { key: "notified", label: "Notified?", pick: (r) => r.notifiedFlag },
+    ];
+  }
+  if (tab === "rate_change") {
+    return [{ key: "newPaymentRate", label: "New payment rate", pick: (r) => formatPaymentRate(r.newPaymentRate) }];
+  }
+  return [];
+}
+
 // --- Table primitives ---------------------------------------------------
 
 type SortDir = "asc" | "desc";
 type SortState<K extends string> = { col: K; dir: SortDir };
+
+const PAGE_SIZE = 20;
+
+/**
+ * Infinite-scroll pagination hook. Returns `visibleCount` (start at PAGE_SIZE)
+ * and a `sentinelRef` to attach to the last visible row. When the sentinel
+ * scrolls into view, visibleCount bumps by PAGE_SIZE. Resets to PAGE_SIZE
+ * whenever `resetKey` changes (e.g. user changes search or filter).
+ */
+function useInfiniteScroll(totalRows: number, resetKey: string) {
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const sentinelRef = useRef<HTMLTableRowElement | null>(null);
+
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [resetKey]);
+
+  useEffect(() => {
+    if (visibleCount >= totalRows) return;
+    const el = sentinelRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setVisibleCount((c) => Math.min(c + PAGE_SIZE, totalRows));
+        }
+      },
+      { rootMargin: "200px" },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [visibleCount, totalRows]);
+
+  return { visibleCount: Math.min(visibleCount, totalRows), sentinelRef };
+}
 
 const FLAG_STATUSES = new Set(["pending", "action required"]);
 const isFlagged = (status: string) =>
@@ -469,7 +794,7 @@ function HeaderCell({
   return (
     <th
       scope="col"
-      className={`sticky top-0 z-10 cursor-pointer select-none border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500 hover:text-slate-700 ${
+      className={`sticky top-0 z-10 cursor-pointer select-none whitespace-nowrap border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500 hover:text-slate-700 ${
         align === "right" ? "text-right" : "text-left"
       }`}
       onClick={onClick}
@@ -490,13 +815,24 @@ function compareDates(a: string | null, b: string | null): number {
   return ad - bd;
 }
 
-function OwnerPill({ owner }: { owner: Owner }) {
+function OwnerPill({ owner, country }: { owner: Owner; country?: string }) {
+  const tag = regionTagFor(owner, country);
+  // US contractors share Hemmi's bucket with RoW, but get their own pill
+  // color (amber) so the table doesn't read all-blue for the whole US team.
+  const cls =
+    tag === "APAC"
+      ? "bg-emerald-100 text-emerald-800"
+      : tag === "US"
+        ? "bg-amber-100 text-amber-800"
+        : tag === "RoW"
+          ? "bg-sky-100 text-sky-800"
+          : "bg-slate-100 text-slate-500";
   return (
     <span
-      className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${ownerBadgeColor(owner)}`}
+      className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${cls}`}
       title={ownerLabel(owner)}
     >
-      {owner === "apac" ? "APAC" : owner === "row" ? "RoW" : "?"}
+      {tag}
     </span>
   );
 }
@@ -506,7 +842,8 @@ function UrgencyCell({ workingDays }: { workingDays: number | null }) {
   if (!badge) return <span className="text-slate-400">—</span>;
   return (
     <span
-      className={`inline-block rounded-md px-2 py-0.5 text-[11px] font-medium ${badge.cls}`}
+      title={badge.tooltip}
+      className={`inline-block whitespace-nowrap rounded-md px-2 py-0.5 text-[11px] font-medium ${badge.cls}`}
     >
       {badge.label}
     </span>
@@ -520,6 +857,7 @@ type SotSortCol =
   | "country"
   | "manager"
   | "approver"
+  | "start"
   | "end"
   | "owner"
   | "status";
@@ -529,12 +867,14 @@ function SotTable({
   ownerFilter,
   search,
   mode,
+  pendingEndChange,
   onStatusChange,
 }: {
   rows: SotEntry[];
   ownerFilter: Owner | "all";
   search: string;
   mode: "active" | "inactive";
+  pendingEndChange?: Map<string, { proposedEnd: string; source: "extension" | "offboarding" }>;
   onStatusChange: (entry: SotEntry, next: string) => void;
 }) {
   const [sort, setSort] = useState<SortState<SotSortCol>>(
@@ -580,10 +920,18 @@ function SotTable({
         return compareStrings(a.owner, b.owner) * dir;
       case "status":
         return compareStrings(a.displayStatus, b.displayStatus) * dir;
+      case "start":
+        return compareDates(a.startDate, b.startDate) * dir;
       case "end":
         return compareDates(a.endDate, b.endDate) * dir;
     }
   });
+
+  const { visibleCount, sentinelRef } = useInfiniteScroll(
+    sorted.length,
+    `${mode}|${ownerFilter}|${search}|${sort.col}|${sort.dir}`,
+  );
+  const paged = sorted.slice(0, visibleCount);
 
   if (sorted.length === 0) return <EmptyState />;
 
@@ -605,16 +953,20 @@ function SotTable({
             <HeaderCell label="Manager" active={sort.col === "manager"} dir={sort.dir} onClick={toggle("manager")} />
             <HeaderCell label="Approver" active={sort.col === "approver"} dir={sort.dir} onClick={toggle("approver")} />
             <HeaderCell label="Status" active={sort.col === "status"} dir={sort.dir} onClick={toggle("status")} />
-            <HeaderCell label="Contract end" active={sort.col === "end"} dir={sort.dir} onClick={toggle("end")} />
+            {mode === "inactive" && (
+              <HeaderCell label="Start" active={sort.col === "start"} dir={sort.dir} onClick={toggle("start")} />
+            )}
+            <HeaderCell label="End date (MM/DD)" active={sort.col === "end"} dir={sort.dir} onClick={toggle("end")} />
             {mode === "active" && (
-              <th className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <th className="sticky top-0 z-10 whitespace-nowrap border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Urgency
               </th>
             )}
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
-          {sorted.map((r) => {
+          {paged.map((r, idx) => {
+            const isLast = idx === paged.length - 1;
             const end = r.endDate ? new Date(r.endDate) : null;
             const wd = end ? workingDaysUntil(end) : null;
             const rowTint =
@@ -626,27 +978,81 @@ function SotTable({
                     ? "bg-slate-50/60 hover:bg-slate-100/60"
                     : "hover:bg-slate-50";
             return (
-              <tr key={`sot-${r.name}-${r.startDate ?? ""}-${r.endDate ?? ""}`} className={rowTint}>
+              <tr
+                key={`sot-${r.name}-${r.startDate ?? ""}-${r.endDate ?? ""}`}
+                ref={isLast ? sentinelRef : null}
+                className={rowTint}
+              >
                 <td className="px-3 py-2">
-                  <div className={`font-medium ${mode === "inactive" ? "text-slate-500" : "text-slate-900"}`}>
+                  <div className={`max-w-[22ch] font-medium ${mode === "inactive" ? "text-slate-500" : "text-slate-900"}`}>
                     {r.name}
                   </div>
-                  <div className="text-xs text-slate-500">
-                    {[r.jobTitle, r.department].filter(Boolean).join(" · ") || "—"}
-                  </div>
+                  {(() => {
+                    const parts = [r.jobTitle, r.department].filter(isMeaningfulText);
+                    if (parts.length === 0) return null;
+                    return (
+                      <div className="text-xs text-slate-500">
+                        <TruncatedCell
+                          value={parts.join(" · ")}
+                          label="Job title · Department"
+                          maxCh={36}
+                        />
+                      </div>
+                    );
+                  })()}
                 </td>
-                <td className="px-3 py-2"><OwnerPill owner={r.owner} /></td>
-                <td className="px-3 py-2 text-slate-700">{r.country || "—"}</td>
-                <td className="px-3 py-2 text-slate-700">{r.manager || "—"}</td>
-                <td className="px-3 py-2 text-slate-700">{r.approver || "—"}</td>
+                <td className="px-3 py-2"><OwnerPill owner={r.owner} country={r.country} /></td>
+                <td className="px-3 py-2 text-slate-700">
+                  <TruncatedCell value={formatCountry(r.country)} label="Country" maxCh={20} />
+                </td>
+                <td className="px-3 py-2 text-slate-700"><div className="max-w-[16ch]">{isMeaningfulText(r.manager) ? r.manager : "—"}</div></td>
+                <td className="px-3 py-2 text-slate-700"><div className="max-w-[16ch]">{isMeaningfulText(r.approver) ? r.approver : "—"}</div></td>
                 <td className="px-3 py-2">
                   <SotStatusSelect
                     entry={r}
                     onChange={(next) => onStatusChange(r, next)}
                   />
                 </td>
-                <td className="px-3 py-2 text-slate-700">
-                  {end ? fmtDate(end) : "—"}
+                {mode === "inactive" && (
+                  <td className="px-3 py-2 text-slate-700 whitespace-nowrap">
+                    {r.startDate ? fmtDate(new Date(r.startDate)) : "—"}
+                  </td>
+                )}
+                <td className="px-3 py-2 text-slate-700 whitespace-nowrap">
+                  {(() => {
+                    if (!end) return "—";
+                    const pending =
+                      mode === "active"
+                        ? pendingEndChange?.get(canonicalName(r.name))
+                        : undefined;
+                    if (pending) {
+                      const proposed = new Date(pending.proposedEnd);
+                      return (
+                        <span
+                          title={
+                            pending.source === "extension"
+                              ? "Pending extension"
+                              : "Pending early offboarding"
+                          }
+                        >
+                          <span className="text-slate-500 line-through">
+                            {fmtDateShort(end)}
+                          </span>
+                          <span className="mx-1 text-slate-400">→</span>
+                          <span
+                            className={
+                              pending.source === "offboarding"
+                                ? "font-medium text-red-700"
+                                : "font-medium text-indigo-700"
+                            }
+                          >
+                            {fmtDateShort(proposed)}
+                          </span>
+                        </span>
+                      );
+                    }
+                    return mode === "active" ? fmtDateShort(end) : fmtDate(end);
+                  })()}
                 </td>
                 {mode === "active" && (
                   <td className="px-3 py-2"><UrgencyCell workingDays={wd} /></td>
@@ -656,6 +1062,11 @@ function SotTable({
           })}
         </tbody>
       </table>
+      {visibleCount < sorted.length && (
+        <div className="border-t border-slate-100 bg-slate-50 px-3 py-2 text-center text-xs text-slate-500">
+          Showing {visibleCount} of {sorted.length} — scroll for more
+        </div>
+      )}
     </div>
   );
 }
@@ -689,7 +1100,7 @@ function SotStatusSelect({
           const next = e.target.value;
           if (next !== current) onChange(next);
         }}
-        className={`rounded-md border px-2 py-0.5 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-300 ${cls}`}
+        className={`w-[130px] rounded-md border px-2 py-0.5 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-300 ${cls}`}
       >
         {options.map((opt) => (
           <option key={opt} value={opt}>
@@ -697,11 +1108,6 @@ function SotStatusSelect({
           </option>
         ))}
       </select>
-      {entry.lifecycle === "ending_soon" && (
-        <span className="text-[10px] font-medium text-amber-700">
-          ⚠ Ending Soon (auto)
-        </span>
-      )}
       {entry.lifecycle === "inactive" && entry.displayStatus === "Expired" && (
         <span className="text-[10px] font-medium text-rose-700">
           ⚠ Past end date
@@ -718,30 +1124,46 @@ function SotStatusSelect({
 
 // --- Request Table ------------------------------------------------------
 
-type ReqSortCol = "flag" | "name" | "owner" | "country" | "manager" | "approver" | "status" | "date";
+type ReqSortCol = "flag" | "name" | "owner" | "country" | "manager" | "approver" | "status" | "date" | "requested";
 
 function RequestTable({
   rows,
   ownerFilter,
   search,
   tab,
+  hiddenCols,
   onStatusChange,
 }: {
   rows: RequestEntry[];
   ownerFilter: Owner | "all";
   search: string;
   tab: TabKey;
+  hiddenCols: Set<string>;
   onStatusChange: (entry: RequestEntry, next: string) => void;
 }) {
   const [sort, setSort] = useState<SortState<ReqSortCol>>({
-    col: "flag",
-    dir: "desc", // flagged rows first
+    col: "requested",
+    dir: "desc", // newest request first
   });
 
   const filtered = rows.filter((r) => {
     if (ownerFilter !== "all" && r.owner !== ownerFilter) return false;
     return matchesSearch(
-      [r.name, r.manager, r.approver, r.country, r.status],
+      [
+        r.name,
+        r.manager,
+        r.approver,
+        r.country,
+        r.status,
+        r.jobTitle,
+        r.department,
+        r.scopeOfWork,
+        r.workingLocation,
+        r.saasTools,
+        r.terminationReason,
+        r.newPaymentRate,
+        r.paymentRate,
+      ],
       search,
     );
   });
@@ -764,6 +1186,10 @@ function RequestTable({
           : "Effective";
 
   const sorted = [...filtered].sort((a, b) => {
+    // Closed rows (terminal status for the tab) always sink to the bottom,
+    // regardless of the chosen sort column. Within each group the sort
+    // column then takes over.
+    if (a.closed !== b.closed) return a.closed ? 1 : -1;
     const dir = sort.dir === "asc" ? 1 : -1;
     switch (sort.col) {
       case "flag": {
@@ -786,8 +1212,36 @@ function RequestTable({
         return compareStrings(a.status || "", b.status || "") * dir;
       case "date":
         return compareDates(dateFor(a), dateFor(b)) * dir;
+      case "requested": {
+        // Most recent submission first when desc. Rows without a timestamp
+        // (no matching Form Responses entry) sort to the bottom regardless of
+        // direction so they don't crowd the top of the list.
+        const ad = a.requestedAt ?? "";
+        const bd = b.requestedAt ?? "";
+        if (!ad && !bd) return 0;
+        if (!ad) return 1;
+        if (!bd) return -1;
+        return ad.localeCompare(bd) * dir;
+      }
     }
   });
+
+  const openRows = sorted.filter((r) => !r.closed);
+  const closedRows = sorted.filter((r) => r.closed);
+
+  const [showClosed, setShowClosed] = useState(false);
+  // Collapse closed rows whenever the user switches tab / filter / search /
+  // sort — keeps the "looks busy" problem from coming back.
+  useEffect(() => {
+    setShowClosed(false);
+  }, [tab, ownerFilter, search, sort.col, sort.dir]);
+
+  const { visibleCount, sentinelRef } = useInfiniteScroll(
+    openRows.length,
+    `${tab}|${ownerFilter}|${search}|${sort.col}|${sort.dir}`,
+  );
+  const pagedOpen = openRows.slice(0, visibleCount);
+  const visibleClosed = showClosed ? closedRows : [];
 
   if (sorted.length === 0) return <EmptyState />;
 
@@ -797,6 +1251,12 @@ function RequestTable({
         ? { col, dir: s.dir === "asc" ? "desc" : "asc" }
         : { col, dir: col === "flag" ? "desc" : "asc" },
     );
+
+  // Job Title + Department now live as a subtitle under the Name cell, so
+  // they're not in the toggleable columns list anymore.
+  const extraDefs = getExtraDefsFor(tab);
+
+  const visibleExtras = extraDefs.filter((d) => !hiddenCols.has(d.key));
 
   return (
     <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -811,72 +1271,349 @@ function RequestTable({
             <HeaderCell label="Approver" active={sort.col === "approver"} dir={sort.dir} onClick={toggle("approver")} />
             <HeaderCell label="Status" active={sort.col === "status"} dir={sort.dir} onClick={toggle("status")} />
             <HeaderCell label={dateLabel} active={sort.col === "date"} dir={sort.dir} onClick={toggle("date")} />
-            <th className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <th className="sticky top-0 z-10 whitespace-nowrap border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
               Urgency
             </th>
+            {visibleExtras.map((d) => (
+              <th
+                key={`xh-${d.key}`}
+                className="sticky top-0 z-10 whitespace-nowrap border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500"
+              >
+                {d.label}
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
-          {sorted.map((r) => {
-            const d = dateFor(r);
-            const wd = d ? workingDaysUntil(new Date(d)) : null;
-            const flagged = isFlagged(r.status);
-            const sLower = r.status.trim().toLowerCase();
-            const tint =
-              sLower === "action required"
-                ? "bg-red-50/70 hover:bg-red-100/70"
-                : sLower === "pending"
-                  ? "bg-amber-50/70 hover:bg-amber-100/70"
-                  : "hover:bg-slate-50";
-            const dotCls =
-              sLower === "action required"
-                ? "bg-red-500"
-                : sLower === "pending"
-                  ? "bg-amber-500"
-                  : "";
-            return (
-              <tr key={`${r.source}-${r.rowIndex}`} className={tint}>
-                <td className="px-2 py-2 text-center">
-                  {flagged ? (
-                    <span
-                      className={`inline-block h-2 w-2 rounded-full ${dotCls}`}
-                      title={r.status}
-                    />
-                  ) : null}
-                </td>
-                <td className="px-3 py-2">
-                  <div className="font-medium text-slate-900">{r.name}</div>
-                  <div className="text-xs text-slate-500">{r.requestType}</div>
-                </td>
-                <td className="px-3 py-2"><OwnerPill owner={r.owner} /></td>
-                <td className="px-3 py-2 text-slate-700">{r.country || "—"}</td>
-                <td className="px-3 py-2 text-slate-700">{r.manager || "—"}</td>
-                <td className="px-3 py-2 text-slate-700">{r.approver || "—"}</td>
-                <td className="px-3 py-2">
-                  <StatusSelect
-                    entry={r}
-                    onChange={(next) => onStatusChange(r, next)}
-                  />
-                </td>
-                <td className="px-3 py-2 text-slate-700">
-                  {tab === "extension" && r.priorEndDate && r.newEndDate ? (
-                    <span>
-                      {fmtDate(new Date(r.priorEndDate))}
-                      <span className="mx-1 text-slate-400">→</span>
-                      {fmtDate(new Date(r.newEndDate))}
-                    </span>
-                  ) : d ? (
-                    fmtDate(new Date(d))
-                  ) : (
-                    "—"
-                  )}
-                </td>
-                <td className="px-3 py-2"><UrgencyCell workingDays={wd} /></td>
-              </tr>
-            );
-          })}
+          {pagedOpen.length === 0 && closedRows.length > 0 && (
+            <tr>
+              <td
+                colSpan={9 + visibleExtras.length}
+                className="px-3 py-6 text-center text-sm text-slate-400"
+              >
+                No open requests.
+              </td>
+            </tr>
+          )}
+          {pagedOpen.map((r, idx) =>
+            renderRequestRow(r, idx === pagedOpen.length - 1 ? sentinelRef : null, {
+              tab,
+              visibleExtras,
+              onStatusChange,
+            }),
+          )}
+          {closedRows.length > 0 && (
+            <tr>
+              <td
+                colSpan={9 + visibleExtras.length}
+                className="border-y border-slate-200 bg-slate-50 px-3 py-1.5"
+              >
+                <button
+                  type="button"
+                  onClick={() => setShowClosed((s) => !s)}
+                  className="flex w-full items-center gap-1.5 text-left text-xs font-medium text-slate-500 hover:text-slate-700"
+                >
+                  <span className="inline-block w-3 text-slate-400">
+                    {showClosed ? "▾" : "▸"}
+                  </span>
+                  {showClosed ? "Hide" : "Show"} {closedRows.length} completed
+                  {" "}— reference only
+                </button>
+              </td>
+            </tr>
+          )}
+          {visibleClosed.map((r) =>
+            renderRequestRow(r, null, { tab, visibleExtras, onStatusChange }),
+          )}
         </tbody>
       </table>
+      {visibleCount < openRows.length && (
+        <div className="border-t border-slate-100 bg-slate-50 px-3 py-2 text-center text-xs text-slate-500">
+          Showing {visibleCount} of {openRows.length} open — scroll for more
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Render a single request row. Extracted so the open-rows list and the
+ * (collapsed-by-default) closed-rows list can share the same markup. The
+ * `sentinelRef` is passed only for the last open row so infinite scroll can
+ * observe it.
+ */
+function renderRequestRow(
+  r: RequestEntry,
+  sentinelRef: React.Ref<HTMLTableRowElement> | null,
+  ctx: {
+    tab: TabKey;
+    visibleExtras: ExtraDef[];
+    onStatusChange: (entry: RequestEntry, next: string) => void;
+  },
+) {
+  const { tab, visibleExtras, onStatusChange } = ctx;
+  const dateFor = (e: RequestEntry): string | null => {
+    if (tab === "onboarding") return e.startDate;
+    if (tab === "extension") return e.priorEndDate;
+    if (tab === "offboarding") return e.endDate;
+    if (tab === "rate_change") return e.effectiveDate;
+    return null;
+  };
+  const d = dateFor(r);
+  const wd = d ? workingDaysUntil(new Date(d)) : null;
+  const flagged = isFlagged(r.status);
+  const sLower = r.status.trim().toLowerCase();
+  const tint = r.closed
+    ? "bg-slate-50/40 opacity-50 hover:opacity-100 hover:bg-slate-100/60"
+    : sLower === "action required"
+      ? "bg-red-50/70 hover:bg-red-100/70"
+      : sLower === "pending"
+        ? "bg-amber-50/70 hover:bg-amber-100/70"
+        : "hover:bg-slate-50";
+  const dotCls =
+    sLower === "action required"
+      ? "bg-red-500"
+      : sLower === "pending"
+        ? "bg-amber-500"
+        : "";
+  const subtitleParts = [r.jobTitle, r.department].filter(isMeaningfulText);
+  return (
+    <tr key={`${r.source}-${r.rowIndex}`} ref={sentinelRef} className={tint}>
+      <td className="px-2 py-2 text-center">
+        {flagged ? (
+          <span
+            className={`inline-block h-2 w-2 rounded-full ${dotCls}`}
+            title={r.status}
+          />
+        ) : null}
+      </td>
+      <td className="px-3 py-2">
+        <div className="max-w-[22ch] font-medium text-slate-900">{r.name}</div>
+        {subtitleParts.length > 0 && (
+          <div className="text-xs text-slate-500">
+            <TruncatedCell
+              value={subtitleParts.join(" · ")}
+              label="Job title · Department"
+              maxCh={36}
+            />
+          </div>
+        )}
+      </td>
+      <td className="px-3 py-2"><OwnerPill owner={r.owner} country={r.country} /></td>
+      <td className="px-3 py-2 text-slate-700">
+        <TruncatedCell value={formatCountry(r.country)} label="Country" maxCh={20} />
+      </td>
+      <td className="px-3 py-2 text-slate-700"><div className="max-w-[16ch]">{isMeaningfulText(r.manager) ? r.manager : "—"}</div></td>
+      <td className="px-3 py-2 text-slate-700"><div className="max-w-[16ch]">{isMeaningfulText(r.approver) ? r.approver : "—"}</div></td>
+      <td className="px-3 py-2">
+        <StatusSelect
+          entry={r}
+          onChange={(next) => onStatusChange(r, next)}
+        />
+      </td>
+      <td className="px-3 py-2 text-slate-700 whitespace-nowrap">
+        {(() => {
+          // For extension rows, only show the "prior → new" arrow when it
+          // actually represents a forward extension (prior earlier than new).
+          // Otherwise the arrow misleads — e.g. when priorEnd was captured
+          // from a later, already-active extension for the same contractor.
+          if (
+            tab === "extension" &&
+            r.priorEndDate &&
+            r.newEndDate &&
+            r.priorEndDate < r.newEndDate
+          ) {
+            return (
+              <span>
+                {fmtDate(new Date(r.priorEndDate))}
+                <span className="mx-1 text-slate-400">→</span>
+                {fmtDate(new Date(r.newEndDate))}
+              </span>
+            );
+          }
+          // Extension without a valid prior → just show the new end date.
+          if (tab === "extension" && r.newEndDate) {
+            return fmtDate(new Date(r.newEndDate));
+          }
+          return d ? fmtDate(new Date(d)) : "—";
+        })()}
+      </td>
+      <td className="px-3 py-2"><UrgencyCell workingDays={wd} /></td>
+      {visibleExtras.map((xd) => {
+        const v = xd.pick(r);
+        return (
+          <td key={`x-${xd.key}`} className="px-3 py-2 text-slate-700">
+            <TruncatedCell value={v} label={xd.label} />
+          </td>
+        );
+      })}
+    </tr>
+  );
+}
+
+/**
+ * A cell that truncates its text and reveals the full value in a popover on
+ * click. Used for free-text columns (Scope, Reason, SaaS Tools, etc.) where
+ * the value can be a paragraph but the table only has a few visible columns
+ * of width. If the value fits in `maxCh`, renders as plain text with no
+ * popover affordance.
+ */
+function TruncatedCell({
+  value,
+  maxCh = 22,
+  label,
+}: {
+  value: string | undefined | null;
+  maxCh?: number;
+  label?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
+
+  // Position the popover with fixed coordinates anchored to the button — the
+  // surrounding table has overflow-x-auto, which would clip an absolutely-
+  // positioned panel. Recompute on open + on scroll/resize so it tracks.
+  useEffect(() => {
+    if (!open) return;
+    const place = () => {
+      const rect = buttonRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const panelWidth = 320;
+      const viewportW = window.innerWidth;
+      // Default: align left edge of panel under left edge of button.
+      let left = rect.left;
+      // Flip if it would overflow the right edge.
+      if (left + panelWidth > viewportW - 8) {
+        left = Math.max(8, viewportW - panelWidth - 8);
+      }
+      setPos({ top: rect.bottom + 4, left });
+    };
+    place();
+    window.addEventListener("scroll", place, true);
+    window.addEventListener("resize", place);
+    return () => {
+      window.removeEventListener("scroll", place, true);
+      window.removeEventListener("resize", place);
+    };
+  }, [open]);
+
+  if (!value || !value.trim()) {
+    return <span className="text-slate-400">—</span>;
+  }
+  const v = value.trim();
+  const isTruncated = v.length > maxCh;
+  if (!isTruncated) {
+    return <span className="whitespace-nowrap">{v}</span>;
+  }
+  return (
+    <>
+      <button
+        ref={buttonRef}
+        type="button"
+        onClick={() => setOpen(true)}
+        className="inline-flex max-w-full cursor-pointer items-center gap-0.5 align-middle text-left hover:text-slate-900 hover:underline hover:decoration-slate-400 hover:decoration-dotted hover:underline-offset-2"
+        style={{ maxWidth: `${maxCh}ch` }}
+        title="Click to expand"
+      >
+        <span className="truncate">{v.slice(0, maxCh)}…</span>
+      </button>
+      {open && pos && (
+        <>
+          <div
+            className="fixed inset-0 z-30"
+            onClick={() => setOpen(false)}
+            aria-hidden="true"
+          />
+          <div
+            className="fixed z-40 w-80 rounded-md border border-slate-200 bg-white p-3 text-sm text-slate-700 shadow-lg"
+            style={{ top: pos.top, left: pos.left }}
+          >
+            {label && (
+              <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                {label}
+              </div>
+            )}
+            <div className="whitespace-pre-wrap break-words">{v}</div>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="mt-2 text-xs text-slate-500 underline hover:text-slate-700"
+            >
+              Close
+            </button>
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
+function ColumnsToggle({
+  defs,
+  hidden,
+  onToggle,
+}: {
+  defs: { key: string; label: string }[];
+  hidden: Set<string>;
+  onToggle: (key: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const hiddenCount = defs.filter((d) => hidden.has(d.key)).length;
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((s) => !s)}
+        className="inline-flex items-center gap-1.5 rounded-md bg-white px-3 py-1.5 text-xs font-medium text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-50"
+      >
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 16 16"
+          className="h-3.5 w-3.5 text-slate-500"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        >
+          <rect x="2" y="3" width="12" height="10" rx="1.5" />
+          <line x1="6" y1="3" x2="6" y2="13" />
+          <line x1="10" y1="3" x2="10" y2="13" />
+        </svg>
+        Columns
+        {hiddenCount > 0 && (
+          <span className="ml-1 rounded-full bg-slate-200 px-1.5 py-0.5 text-[10px] font-medium text-slate-700">
+            {defs.length - hiddenCount}/{defs.length}
+          </span>
+        )}
+      </button>
+      {open && (
+        <>
+          <div
+            className="fixed inset-0 z-10"
+            onClick={() => setOpen(false)}
+            aria-hidden="true"
+          />
+          <div className="absolute right-0 z-20 mt-1 w-56 rounded-md border border-slate-200 bg-white p-2 shadow-lg">
+            {defs.map((d) => {
+              const isVisible = !hidden.has(d.key);
+              return (
+                <label
+                  key={d.key}
+                  className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-sm hover:bg-slate-50"
+                >
+                  <input
+                    type="checkbox"
+                    checked={isVisible}
+                    onChange={() => onToggle(d.key)}
+                    className="h-3.5 w-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span className="text-slate-700">{d.label}</span>
+                </label>
+              );
+            })}
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -898,7 +1635,7 @@ function StatusSelect({
         const next = e.target.value;
         if (next !== current) onChange(next);
       }}
-      className={`rounded-md border px-2 py-0.5 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-300 ${chipClasses(current)}`}
+      className={`w-[130px] rounded-md border px-2 py-0.5 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-300 ${chipClasses(current)}`}
     >
       {all.map((opt) => (
         <option key={opt} value={opt}>

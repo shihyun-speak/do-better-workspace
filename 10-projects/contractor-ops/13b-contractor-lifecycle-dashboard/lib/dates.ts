@@ -66,11 +66,24 @@ function workingDaysBetween(start: Date, end: Date): number {
 
 export function fmtDate(d: Date | null): string {
   if (!d) return "";
-  const month = d.toLocaleString("en-US", { month: "short", timeZone: "UTC" });
-  const day = d.getUTCDate();
-  const year = d.getUTCFullYear();
+  const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(d.getUTCDate()).padStart(2, "0");
+  const yyyy = d.getUTCFullYear();
+  return `${mm}/${dd}/${yyyy}`;
+}
+
+/**
+ * Compact date format for the Active Roster table: drops the year when it
+ * matches the current year. "MM/DD" most of the time, "MM/DD/YYYY" when the
+ * date is in a different year.
+ */
+export function fmtDateShort(d: Date | null): string {
+  if (!d) return "";
+  const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(d.getUTCDate()).padStart(2, "0");
+  const yyyy = d.getUTCFullYear();
   const thisYear = new Date().getUTCFullYear();
-  return year === thisYear ? `${month} ${day}` : `${month} ${day}, ${year}`;
+  return yyyy === thisYear ? `${mm}/${dd}` : `${mm}/${dd}/${yyyy}`;
 }
 
 export function isoDate(d: Date | null): string | null {
