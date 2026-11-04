@@ -64,7 +64,7 @@ export const UPDATES: Update[] = [
     date: "2026-11-04",
     kind: "New",
     title: "Scope and country of residence on cards",
-    body: "Onboarding and Extension cards have a Show scope toggle. Onboarding cards show Country of residence (with the state for US) instead of working location.",
+    body: "Onboarding and Extension cards have a Show scope toggle (and Onboarding a Show tools toggle). Onboarding cards show Country of residence (with the state for US) instead of working location.",
   },
   {
     date: "2026-11-02",

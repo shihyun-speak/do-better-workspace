@@ -191,10 +191,10 @@ export default function OpenItems({
             {fieldsFor(r).map(([k, v]) => (
               <div key={k} style={{ display: "contents" }}>
                 <dt>{k}</dt>
-                {k === "Scope" ? (
+                {k === "Scope" || k === "Tools" ? (
                   <dd>
                     <details className="reveal">
-                      <summary>Show scope</summary>
+                      <summary>Show {k.toLowerCase()}</summary>
                       <p>{v}</p>
                     </details>
                   </dd>
