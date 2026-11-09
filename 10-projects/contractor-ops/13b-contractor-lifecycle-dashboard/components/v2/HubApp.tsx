@@ -6,6 +6,7 @@ import { isClosedStatus } from "@/lib/parsers";
 import type { StepState } from "@/lib/steps";
 import { REGIONS, inRegion, type Region } from "@/lib/regions";
 import { CHANGED_CHOICE, requestKey, stepsFor } from "@/lib/plans";
+import { canonicalName } from "@/lib/owners";
 import OpenItems from "./OpenItems";
 import Profile from "./Profile";
 import Roster from "./Roster";
@@ -67,13 +68,34 @@ export default function HubApp({
   const needsSync = (r: RequestEntry, saved?: Record<string, boolean>) =>
     isOpen(r) && statusOf(r).trim().toLowerCase() !== wantedStatus(r, saved).toLowerCase();
 
+  // Roster Ended closes the offboarding (Shihyun, 2026-11-09): when the SoT
+  // status is Ended, an open Offboarding request whose checklist is fully
+  // ticked flips to Completed. If steps are missing it stays open and the
+  // profile says so, so unfinished steps (access removal etc.) stay visible.
+  const allStepsDone = (r: RequestEntry, saved: Record<string, boolean> = {}) =>
+    stepsFor(r, saved).every((s) => s.id === "form" || saved[s.id] === true);
+  const sotEndedFor = (name: string) => {
+    const p = data.sot.find((x) => canonicalName(x.name) === canonicalName(name));
+    return !!p && sotStatusOf(p).trim().toLowerCase() === "ended";
+  };
+  const openOffboardingsFor = (name: string) =>
+    data.offboarding.filter((r) => isOpen(r) && canonicalName(r.name) === canonicalName(name));
+
   // On load, bring open requests in line with their ticks (new requests come
   // in from the form as blank / Pending; DocuSign can tick steps server-side).
   const synced = useRef(false);
   useEffect(() => {
     if (synced.current || stepsError) return;
     synced.current = true;
-    const todo = all.filter((r) => needsSync(r, steps[requestKey(r)]));
+    const finish = data.offboarding.filter(
+      (r) => isOpen(r) && allStepsDone(r, steps[requestKey(r)]) && sotEndedFor(r.name),
+    );
+    const todo = all.filter((r) => !finish.includes(r) && needsSync(r, steps[requestKey(r)]));
+    if (finish.length) {
+      (async () => {
+        for (const r of finish) await setStatus(r, "Completed");
+      })();
+    }
     if (!todo.length) return;
     (async () => {
       let ok = 0;
@@ -96,7 +118,9 @@ export default function HubApp({
       });
       if (!res.ok) throw new Error((await res.json()).error || `HTTP ${res.status}`);
       if (step === CHANGED_CHOICE) flash(`${r.name}: ${done ? "scope or rate changed, DocuSign steps added" : "no change, short path"}`);
-      if (needsSync(r, next)) await setStatus(r, wantedStatus(r, next));
+      if (r.source === "offboarding" && isOpen(r) && allStepsDone(r, next) && sotEndedFor(r.name)) {
+        await setStatus(r, "Completed");
+      } else if (needsSync(r, next)) await setStatus(r, wantedStatus(r, next));
     } catch (err) {
       setSteps((s) => ({ ...s, [key]: { ...(s[key] || {}), [step]: prev as boolean } }));
       flash(`Couldn't save: ${err instanceof Error ? err.message : String(err)}`, true);
@@ -137,7 +161,17 @@ export default function HubApp({
       const body = await res.json();
       if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
       setSotOverrides((o) => ({ ...o, [p.rowIndex]: status }));
-      flash(`${p.name}: SoT status set to ${status}`);
+      let extra = "";
+      if (status.toLowerCase() === "ended") {
+        const open = openOffboardingsFor(p.name);
+        const ready = open.filter((r) => allStepsDone(r, steps[requestKey(r)]));
+        let closed = 0;
+        for (const r of ready) if (await setStatus(r, "Completed", true)) closed++;
+        const left = open.length - closed;
+        if (closed) extra += `. Offboarding marked Completed`;
+        if (left) extra += `. Offboarding still open: finish its steps or mark it Completed`;
+      }
+      flash(`${p.name}: SoT status set to ${status}${extra}`);
       return true;
     } catch (err) {
       flash(`Couldn't update the Sheet: ${err instanceof Error ? err.message : String(err)}`, true);

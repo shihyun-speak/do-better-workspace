@@ -7,7 +7,7 @@ import type { Submission } from "@/lib/submissions";
 import { canonicalName, formatCountry } from "@/lib/owners";
 import { parseDate, workingDaysUntil } from "@/lib/dates";
 import { PLANS, requestKey, stepsFor } from "@/lib/plans";
-import { STATUS_OPTIONS, sotSideEffect } from "@/lib/statuses";
+import { STATUS_OPTIONS, sotSideEffect, sotStatusSideEffect } from "@/lib/statuses";
 import StatusSelect from "./StatusSelect";
 
 // Contractor profile: SoT contract facts + every answer from every form
@@ -112,6 +112,9 @@ export default function Profile({
         )}
         <span className="due">submitted {fmt(at)}</span>
         {r && isOpen(r) && <span className="steps">{done} of {list.length} steps</span>}
+        {r && r.source === "offboarding" && isOpen(r) && sot && sotStatusOf(sot).trim().toLowerCase() === "ended" && (
+          <span className="hint">Roster says Ended. Finish the steps or mark Completed.</span>
+        )}
       </div>
     );
   }
@@ -140,7 +143,7 @@ export default function Profile({
             {sot && (
               <>
                 <span className="sub" style={{ fontSize: 12 }}>SoT status</span>
-                <StatusSelect value={sotStatusOf(sot)} options={STATUS_OPTIONS.sot} what={`${sot.name}'s SoT status`} onChange={(next) => onSotStatus(sot, next)} />
+                <StatusSelect value={sotStatusOf(sot)} options={STATUS_OPTIONS.sot} what={`${sot.name}'s SoT status`} note={sotStatusSideEffect} onChange={(next) => onSotStatus(sot, next)} />
               </>
             )}
             <span className="sub" style={{ fontSize: 12 }}>{formatCountry(country) || "Country unknown"}</span>

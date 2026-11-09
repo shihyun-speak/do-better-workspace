@@ -189,6 +189,7 @@ export function ownerLabel(owner: Owner): string {
 const NAME_ALIASES: Record<string, string> = {
   "katya hadjipetkova": "ekaterina hadjipetkova",
   "min oh": "minjin oh",
+  "mateo arturo marin": "mateo arturo",
 };
 
 export function canonicalName(name: string | undefined | null): string {

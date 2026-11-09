@@ -19,3 +19,10 @@ export function sotSideEffect(source: RequestSource, status: string): string {
   if (source === "offboarding" && s !== "void") return "Their SoT status will also be set to Ending soon.";
   return "";
 }
+
+/** What else an SoT status change does (see HubApp.setSotStatus). */
+export function sotStatusSideEffect(status: string): string {
+  if (status.toLowerCase() === "ended")
+    return "Any open offboarding request with every step ticked will be marked Completed.";
+  return "";
+}

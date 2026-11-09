@@ -7,6 +7,12 @@ export type Update = { date: string; kind: UpdateKind; title: string; body: stri
 
 export const UPDATES: Update[] = [
   {
+    date: "2026-11-09",
+    kind: "Changed",
+    title: "Setting someone to Ended closes their offboarding",
+    body: "When you set a contractor's status to Ended (in the Roster or their profile), any open offboarding request with every step ticked is marked Completed for you. If steps are still unticked, the request stays open and its box says \"Roster says Ended. Finish the steps or mark Completed.\" Ticking the last step after that completes it.",
+  },
+  {
     date: "2026-11-04",
     kind: "New",
     title: "Every active contract on the calendar",

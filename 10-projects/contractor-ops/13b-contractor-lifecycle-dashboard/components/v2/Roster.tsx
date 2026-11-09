@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { DashboardData, SotEntry } from "@/lib/parsers";
 import { parseDate, workingDaysUntil } from "@/lib/dates";
 import { inRegion, type Region } from "@/lib/regions";
-import { STATUS_OPTIONS } from "@/lib/statuses";
+import { STATUS_OPTIONS, sotStatusSideEffect } from "@/lib/statuses";
 import { OwnerPill } from "./OpenItems";
 import StatusSelect from "./StatusSelect";
 
@@ -116,7 +116,7 @@ export default function Roster({
                         {lapsed && <span className="pill s-bad lapsed">Past end date</span>}
                       </td>
                       <td>
-                        <StatusSelect value={statusOf(p)} options={STATUS_OPTIONS.sot} what={`${p.name}'s SoT status`} onChange={(next) => onStatus(p, next)} />
+                        <StatusSelect value={statusOf(p)} options={STATUS_OPTIONS.sot} what={`${p.name}'s SoT status`} note={sotStatusSideEffect} onChange={(next) => onStatus(p, next)} />
                       </td>
                       <td className="mono r faintc">{p.rowIndex}</td>
                     </tr>
