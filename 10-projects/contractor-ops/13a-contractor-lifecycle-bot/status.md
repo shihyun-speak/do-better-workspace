@@ -2,6 +2,8 @@
 
 > Quick reference for the current state of the bot. See `spec.md` for the original design and `next-iteration.md` for future direction.
 
+> **2026-11-09: RETIRED.** The `Daily Digest` workflow in `shihyun-speak/contractor-lifecycle-bot` was disabled (`gh workflow disable`) after it kept posting a second, stale digest alongside the live bot. The live bot is `speak-peopleops/peopleops-automations` (`contractor-reminder.yml`). Re-enable only if that one is shut down.
+
 ## What's live (2026-04-30)
 
 **Runtime**: GitHub Actions (not Vercel — we tried Vercel but Hobby plan blocked the 30-min polling and Python runtime setup was brittle)
