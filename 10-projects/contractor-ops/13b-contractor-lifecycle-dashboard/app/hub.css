@@ -39,8 +39,8 @@
 .hub .seg { display: inline-flex; background: var(--sunk); border-radius: 8px; padding: 2px; }
 .hub .seg button { border: 0; background: none; padding: 5px 10px; border-radius: 6px; font-size: 12px; color: var(--muted); font-weight: 500; }
 .hub .seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
-.hub a.btn.classic { display: inline-flex; align-items: center; justify-content: center; margin-top: 10px; font-size: 12px; color: var(--muted); text-decoration: none; padding: 4px 10px; }
-.hub a.btn.classic:hover { color: var(--ink); background: var(--sunk); }
+.hub .btn.classic { display: flex; width: fit-content; align-items: center; justify-content: center; margin-top: 10px; font-size: 12px; color: var(--muted); text-decoration: none; padding: 4px 10px; }
+.hub .btn.classic:hover { color: var(--ink); background: var(--sunk); }
 
 .hub .main { min-width: 0; padding: 24px max(16px, 2.5vw) 64px; }
 .hub .pagehead { margin-bottom: 18px; }
@@ -141,6 +141,7 @@
   .hub .rail { position: static; height: auto; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding-block: 10px; border-right: 0; border-bottom: 1px solid var(--line); }
   .hub .nav { flex-direction: row; overflow-x: auto; max-width: 100%; }
   .hub .viewer { margin-top: 0; margin-left: auto; flex-direction: row; align-items: center; }
+  .hub .railfoot { margin: 0 0 0 8px; padding: 0 0 0 12px; border: 0; border-left: 1px solid var(--line); flex-direction: row; align-items: center; gap: 12px; }
   .hub .layout { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 720px) {
@@ -280,3 +281,23 @@
 .hub .ulist .btn.ask { padding: 2px 8px; font-size: 11.5px; }
 .hub .umore { margin: 4px 16px 0; }
 .hub .t-contract { --tc: var(--muted); --tc-soft: var(--sunk); }
+
+/* Sync badge, bottom of the rail (2026-11-10) */
+.hub .railfoot { margin-top: 14px; padding: 12px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; }
+.hub .sync { display: inline-flex; align-items: center; gap: 7px; width: fit-content; padding: 0; border: 0; background: none; color: var(--muted); font-size: 12px; font-weight: 500; cursor: pointer; transition: color .15s; }
+.hub .sync:hover:not(:disabled) { color: var(--ink); }
+.hub .footlinks { display: flex; align-items: center; gap: 10px; font-size: 12px; }
+.hub .footlinks a { color: var(--faint); text-decoration: none; }
+.hub .footlinks a:hover { color: var(--ink); text-decoration: underline; }
+.hub .footlinks a + a { padding-left: 10px; border-left: 1px solid var(--line); }
+.hub .sync:disabled { cursor: default; }
+.hub .syncdot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 3px var(--ok-soft); animation: hub-breathe 2.6s ease-in-out infinite; }
+.hub .sync.off .syncdot { background: var(--warn); box-shadow: 0 0 0 3px var(--warn-soft); animation: none; }
+.hub .sync.busy .syncdot { background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.hub .syncicon { color: var(--faint); }
+.hub .sync:hover .syncicon { color: var(--ink); }
+.hub .sync.busy .syncicon { animation: hub-spin .8s linear infinite; }
+@keyframes hub-breathe { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
+@keyframes hub-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .hub .syncdot, .hub .sync.busy .syncicon { animation: none; } }
+.hub .mismatch { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; margin-bottom: 14px; border-radius: 8px; background: var(--warn-soft); color: var(--ink); font-size: 13px; }

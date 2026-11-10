@@ -7,6 +7,24 @@ export type Update = { date: string; kind: UpdateKind; title: string; body: stri
 
 export const UPDATES: Update[] = [
   {
+    date: "2026-11-10",
+    kind: "Fixed",
+    title: "Status dropdowns match the Sheet",
+    body: "Every status dropdown now has exactly the options the Sheet's own dropdown has, in the same order. The Roster no longer offers Pending, which the SoT column doesn't accept.",
+  },
+  {
+    date: "2026-11-10",
+    kind: "New",
+    title: "Roster status moves the request too",
+    body: "Changing someone's status in the Roster (or their profile) now updates their request, so you can roll back something that was marked done too early. Onboarding reopens their latest onboarding request, and stays matched: anyone the Roster lists as Onboarding is kept open in Open items automatically, even if they were set that way earlier. Active marks any open onboarding or extension Active. Ending soon reopens their latest Completed offboarding. Ended still closes an offboarding once every step is ticked. A reopened request lands back in Open items with its ticks kept. Action Required and Voided only change the Roster. If the Roster and a request already disagree (say the Roster says Onboarding but the onboarding request is Active), the profile shows a Reopen request button.",
+  },
+  {
+    date: "2026-11-10",
+    kind: "Fixed",
+    title: "Live updates from the Sheet",
+    body: "The dashboard now checks the Sheet every 30 seconds while it's open, and right away when you come back to the tab, so changes made directly in the Sheet (for example Completed back to Pending) show up in Open items and the Roster without reloading. The sync badge at the bottom left shows when it last checked; click it to check right away. Before, it could show a copy of the Sheet up to a minute old.",
+  },
+  {
     date: "2026-11-09",
     kind: "Changed",
     title: "Setting someone to Ended closes their offboarding",

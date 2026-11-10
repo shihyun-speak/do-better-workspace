@@ -31,7 +31,6 @@ const ALLOWED_STATUSES: Record<Source, string[]> = {
   sot: [
     "Active",
     "Onboarding",
-    "Pending",
     "Action Required",
     "Ending Soon",
     "Ending soon",

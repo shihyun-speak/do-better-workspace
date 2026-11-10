@@ -41,6 +41,7 @@ export default function Profile({
   sotStatusOf,
   onStatus,
   onSotStatus,
+  onReopen,
   onClose,
 }: {
   name: string;
@@ -51,6 +52,7 @@ export default function Profile({
   sotStatusOf: (p: SotEntry) => string;
   onStatus: (r: RequestEntry, status: string) => Promise<boolean>;
   onSotStatus: (p: SotEntry, status: string) => Promise<boolean>;
+  onReopen: (r: RequestEntry) => Promise<void>;
   onClose: () => void;
 }) {
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -90,6 +92,22 @@ export default function Profile({
   const role = [sot?.jobTitle || onb?.jobTitle, sot?.department || onb?.department].filter(Boolean).join(", ");
   const end = parseDate(sot?.endDate);
   const left = end ? workingDaysUntil(end) : null;
+
+  // Roster and request disagree (Shihyun, 2026-11-10): Roster says Onboarding
+  // but their latest onboarding is closed, or Ending soon but their latest
+  // offboarding is Completed. Offer a one-click reopen.
+  const sotNow = sot ? sotStatusOf(sot).trim().toLowerCase() : "";
+  const latestOf = (t: RequestSource) => reqs.find((r) => r.source === t);
+  const mismatch: { r: RequestEntry; msg: string } | null = (() => {
+    const onbLatest = latestOf("onboarding");
+    if (sotNow === "onboarding" && onbLatest && !reqs.some((r) => r.source === "onboarding" && isOpen(r)) && ["active", "ended"].includes(statusOf(onbLatest).trim().toLowerCase()))
+      return { r: onbLatest, msg: `Roster says Onboarding, but their onboarding request is ${statusOf(onbLatest)}.` };
+    const offLatest = latestOf("offboarding");
+    if (sotNow === "ending soon" && offLatest && !reqs.some((r) => r.source === "offboarding" && isOpen(r)) && statusOf(offLatest).trim().toLowerCase() === "completed")
+      return { r: offLatest, msg: "Roster says Ending soon, but their offboarding request is Completed." };
+    return null;
+  })();
+  const [reopening, setReopening] = useState(false);
 
   // The request-tab row for a submission: same type + same submission date.
   const requestFor = (type: RequestSource | null, at: string | null) =>
@@ -150,6 +168,23 @@ export default function Profile({
           </div>
         </div>
         <div className="dbody">
+          {mismatch && (
+            <div className="mismatch" role="status">
+              <span>{mismatch.msg}</span>
+              <button
+                type="button"
+                className="btn"
+                disabled={reopening}
+                onClick={async () => {
+                  setReopening(true);
+                  await onReopen(mismatch.r);
+                  setReopening(false);
+                }}
+              >
+                {reopening ? "Reopening…" : "Reopen request"}
+              </button>
+            </div>
+          )}
           <details className="contract" open>
             <summary className="label">Contract (SoT)</summary>
             {sot ? (

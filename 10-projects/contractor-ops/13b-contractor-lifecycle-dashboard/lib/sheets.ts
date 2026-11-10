@@ -10,7 +10,10 @@ export async function readRange(rangeStr: string): Promise<string[][]> {
     `${encodeURIComponent(rangeStr)}?valueRenderOption=FORMATTED_VALUE`;
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${token}` },
-    next: { revalidate: 60 },
+    // Always fresh (2026-11-10): people edit the Sheet directly, and a 60s
+    // cache made Open items / Roster lag behind it. Also keeps the write
+    // route's name-vs-row probe honest.
+    cache: "no-store",
   });
   if (!res.ok) {
     throw new Error(

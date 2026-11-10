@@ -1,13 +1,15 @@
 import type { RequestSource } from "./parsers";
 
-// Statuses a person can pick by hand in /v2. Same values as the Sheet's own
-// dropdowns (and the allowlist in app/api/contractors/status).
+// Statuses a person can pick by hand in /v2: exactly the Sheet's own
+// dropdowns, same values and order (read from the Sheet's data validation
+// 2026-11-10; the Sheet is strict, so anything else is rejected). Keep in
+// step with the allowlist in app/api/contractors/status.
 export const STATUS_OPTIONS: Record<RequestSource | "sot", string[]> = {
-  onboarding: ["Pending", "Action Required", "Active", "Ended", "Void"],
-  extension: ["Pending", "Action Required", "Active", "Void"],
-  offboarding: ["Pending", "Action Required", "Completed", "Void"],
-  rate_change: ["Pending", "Action Required", "Completed", "Void"],
-  sot: ["Onboarding", "Active", "Pending", "Action Required", "Ending soon", "Ended", "Voided"],
+  onboarding: ["Action Required", "Pending", "Active", "Ended", "Void"],
+  extension: ["Action Required", "Pending", "Active", "Void"],
+  offboarding: ["Action Required", "Pending", "Completed", "Void"],
+  rate_change: ["Action Required", "Pending", "Completed", "Void"],
+  sot: ["Action Required", "Onboarding", "Active", "Ending soon", "Ended", "Voided"],
 };
 
 /** What else a request status change writes to the SoT row (see the status route). */
@@ -22,7 +24,10 @@ export function sotSideEffect(source: RequestSource, status: string): string {
 
 /** What else an SoT status change does (see HubApp.setSotStatus). */
 export function sotStatusSideEffect(status: string): string {
-  if (status.toLowerCase() === "ended")
-    return "Any open offboarding request with every step ticked will be marked Completed.";
+  const s = status.toLowerCase();
+  if (s === "ended") return "Any open offboarding request with every step ticked will be marked Completed.";
+  if (s === "onboarding") return "Their latest onboarding request will be reopened and show in Open items again.";
+  if (s === "active") return "Any open onboarding or extension request will be marked Active (an extension also sets the SoT end date).";
+  if (s === "ending soon") return "Their latest Completed offboarding request will be reopened and show in Open items again.";
   return "";
 }
