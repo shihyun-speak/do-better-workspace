@@ -136,7 +136,16 @@
 .hub .toast.err { background: var(--bad); color: #fff; }
 .hub .soon { border: 1px dashed var(--line); border-radius: 10px; padding: 24px; color: var(--muted); }
 
+.hub .brandrow { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.hub .railtoggle { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: 0; border-radius: 6px; background: none; color: var(--faint); }
+.hub .railtoggle:hover { background: var(--sunk); color: var(--ink); }
+@media (min-width: 901px) {
+  .hub .app.railclosed { grid-template-columns: 52px minmax(0, 1fr); }
+  .hub .app.railclosed .rail { padding: 16px 12px; align-items: center; }
+  .hub .app.railclosed .rail > :not(.brandrow), .hub .app.railclosed .brand { display: none; }
+}
 @media (max-width: 900px) {
+  .hub .railtoggle { display: none; }
   .hub .app { grid-template-columns: minmax(0, 1fr); }
   .hub .rail { position: static; height: auto; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding-block: 10px; border-right: 0; border-bottom: 1px solid var(--line); }
   .hub .nav { flex-direction: row; overflow-x: auto; max-width: 100%; }

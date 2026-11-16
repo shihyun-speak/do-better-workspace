@@ -7,6 +7,12 @@ export type Update = { date: string; kind: UpdateKind; title: string; body: stri
 
 export const UPDATES: Update[] = [
   {
+    date: "2026-11-16",
+    kind: "New",
+    title: "Hide the sidebar",
+    body: "Click the small panel icon next to \"Contractor Hub\" at the top left to hide the sidebar and give the page more room. Click it again to bring it back. Your browser remembers your choice. On a narrow window the sidebar is already a bar across the top, so the button doesn't show there.",
+  },
+  {
     date: "2026-11-10",
     kind: "Fixed",
     title: "Status dropdowns match the Sheet",

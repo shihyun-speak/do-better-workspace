@@ -342,6 +342,26 @@ export default function HubApp({
     }
   }
 
+  // Sidebar collapse, remembered per browser. Desktop only (CSS ignores it under 900px).
+  const [railOpen, setRailOpen] = useState(true);
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("hub.railOpen") === "0") setRailOpen(false);
+    } catch {
+      /* storage blocked: stay open */
+    }
+  }, []);
+  function toggleRail() {
+    setRailOpen((o) => {
+      try {
+        localStorage.setItem("hub.railOpen", o ? "0" : "1");
+      } catch {
+        /* ignore */
+      }
+      return !o;
+    });
+  }
+
   const openCount = all.filter((r) => isOpen(r) && inRegion(r.owner, region)).length;
   const NAV: [View, string, string][] = [
     ["open", "Open items", String(openCount)],
@@ -350,10 +370,26 @@ export default function HubApp({
   ];
 
   return (
-    <div className="app">
+    <div className={`app${railOpen ? "" : " railclosed"}`}>
       <aside className="rail">
-        <div className="brand">
-          Contractor Hub<small>People Ops</small>
+        <div className="brandrow">
+          <div className="brand">
+            Contractor Hub<small>People Ops</small>
+          </div>
+          <button
+            type="button"
+            className="railtoggle"
+            onClick={toggleRail}
+            aria-expanded={railOpen}
+            aria-label={railOpen ? "Hide sidebar" : "Show sidebar"}
+            title={railOpen ? "Hide sidebar" : "Show sidebar"}
+          >
+            <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+              <rect x="1.75" y="2.75" width="12.5" height="10.5" rx="2" fill="none" stroke="currentColor" strokeWidth="1.4" />
+              <path d="M6 3v10" stroke="currentColor" strokeWidth="1.4" />
+              <path d={railOpen ? "M11 6.5 9.5 8l1.5 1.5" : "M9.5 6.5 11 8l-1.5 1.5"} fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
         </div>
         {viewerEmail && (
           <form action="/signout" method="POST" className="session">
