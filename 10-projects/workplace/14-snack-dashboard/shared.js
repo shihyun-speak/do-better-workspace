@@ -135,19 +135,41 @@ function getGeneration(dateStr) {
   return '미정';
 }
 
+// Generations come live from the Notion 쩝쩝박사 page (api/generations.js); CONFIG above is the fallback.
+async function loadGenerations() {
+  try {
+    const r = await fetch('/api/generations');
+    const d = await r.json();
+    const gens = (d.generations || []).filter(g => g.start);
+    if (!gens.length) return;
+    CONFIG.GENERATIONS = gens.map(g => ({ name: g.name, start: g.start, end: g.end || '9999-12-31' }));
+    gens.forEach(g => { if (g.budget) CONFIG.BUDGET_HISTORY[g.name] = g.budget; });
+    const latest = gens[gens.length - 1];
+    if (latest.budget) CONFIG.BUDGET = latest.budget;
+  } catch { /* keep defaults */ }
+}
+
 function getBudgetForGen(genName) {
   return CONFIG.BUDGET_HISTORY[genName] || CONFIG.BUDGET;
 }
 
 // ── Category Detection (from product name) ─────────────
+// Snack categories, built from real item names in the Notion DB (2026-11-18).
+// Each comma-separated item takes the FIRST rule that matches, so order matters
+// (e.g. 바나나우유 hits 우유/유제품 before 과일).
 const CATEGORY_RULES = [
-  { category: '음료', keywords: ['하늘보리', '루이보스', '보리차', '에코보리', '링티', '토레타', '코카콜라', '콜라', '탄산수', '에이드', '포카리', '프로틴 음료', '허쉬드링크', '허쉬 드링크', '오이오차', '초록매실', '태양의식후비법', '핫초코', '호박팥차', '캐모마일', '트와이닝', '결명자', '네스프레소', '두유', '매일두유', '아몬드브리즈', '바나나우유', '바나나 우유', '미숫가루', '요구르트', '코코넛워터'] },
-  { category: '과일', keywords: ['감귤', '만다린', '바나나', '딸기', '블루베리', '방울토마토', '과일', '오렌지주스', '돈시몬'] },
-  { category: '유제품/건강', keywords: ['요거트', '요거톡', '비요뜨', '그릭요거트', '랩노쉬', '에너지바', '프로틴', '메추리알', '훈제', '닭가슴살', '벌꿀', '너트', '한줌너트'] },
-  { category: '과자/스낵', keywords: ['과자', '칸쵸', '치토스', '스키틀즈', '하리보', '곤약', '고구마스틱', '썬칩', '다이제', '몽쉘', '쿠크다스', '뻥이요', '뉴룽지', '무뚝뚝', '꽈배기', '김칩스', '약과', '노리마끼', '부샤드', '리콜라', '사랑방캔디', '쫀득이', '코코넛 과자', '가나', '스콘', '반시', '쌀과자', '봉지과자', '오뜨', '다크초코', '초콜릿'] },
-  { category: '계절간식', keywords: ['아이스크림', '호빵', '붕어빵', '떡', '창억떡', '생일케이크'] },
-  { category: '식사/간편식', keywords: ['컵라면', '컵누들', '햇반', '육개장'] },
+  { category: '우유/유제품', keywords: ['우유', '두유', '오트밀크', '아몬드브리즈', '요거트', '요거톡', '비요뜨', '요구르트', '상하목장', '밀크'] },
+  { category: '차', keywords: ['하늘보리', '보리차', '에코보리', '루이보스', '쑥차', '우롱', '옥수수수염', '그린티', '녹차', '자스민', '메밀차', '오르조', '티백', '홍차', '캐모마일', '트와이닝', '결명자', '호박팥차', '오이오차', '말차', '티즐', '도밍고', '태양의식후비법', '차 주문', '차 구매'] },
+  { category: '음료', keywords: ['코카콜라', '제로콜라', '펩시', '사이다', '탄산수', '트레비', '에이드', '소다', '포카리', '토레타', '링티', '초록매실', '코코넛워터', '코코제로', '식혜', '핫초코', '드링크', '네스프레소', '커피', '주스', '돈시몬', '미숫가루', '음료', '생수', '레몬수'] },
+  { category: '과일', keywords: ['감귤', '만다린', '귤', '바나나', '딸기', '블루베리', '방울토마토', '토마토', '사과', '포도', '샤인머스캣', '키위', '과일', '신선식품', '쿠팡프레쉬'] },
+  { category: '단백질/건강', keywords: ['프로틴', '단백', '셀렉스', '테이크핏', '랩노쉬', '에너지바', '닭가슴살', '메추리알', '훈제', '반숙란', '참숯란', '계란', '너트', '넛츠', '견과', '그래놀라', '땅콩버터', '시리얼', '뉴트리오코', '벌꿀', '곤약'] },
+  { category: '디저트/아이스크림', keywords: ['아이스크림', '디핀다츠', '모나카', '라라스윗', '빙수', '설빙', '요아정', '케이크', '도넛', '도너츠', '크리스피', '와플', '호빵', '붕어빵', '창억떡', '떡', '비파티세리', '계란빵', '두바이'] },
+  { category: '빵/간편식', keywords: ['식빵', '베이글', '토스트', '빵', '두부리또', '구운감자', '라면', '컵누들', '햇반', '육개장', '만두', '핫도그'] },
+  { category: '과자/젤리', keywords: ['과자', '칩', '스낵', '젤리', '캔디', '사탕', '새콤달콤', '딸몽', '하리보', '스키틀즈', '껌', '초코바', '초콜릿', '초코', '가나', '쿠크다스', '다이제', '몽쉘', '칸쵸', '치토스', '팝코너스', '누룽지', '뉴룽지', '비쵸비', '부각', '맛밤', '밤', '고구마', '약과', '꽈배기', '쫀득이', '뻥이요', '무뚝뚝', '노리마끼', '부샤드', '리콜라', '오뜨', '스콘', '반시', '트롤리', '주전부리'] },
 ];
+// Whole-row patterns checked before item keywords
+const EVENT_ROW = /bi-?weekly|바이위클리|happy hour|breakfast|파티|visitor|new hire|입사|화이트데이|생일|졸업|치킨|피자|닭강정|마라/i;
+const BULK_ROW = /대량|다량|추가 주문|간식 주문|음료 주문|간식 구매|음료 구매|음료 구입|간식, 음료|등$|등 |^쿠팡 간식$|셀렉션|^쿠팡 대량/;
 
 // Normalize similar item names (루이보스차 → 루이보스, 바나나우유 → 바나나 우유, etc.)
 const ITEM_ALIASES = {
@@ -170,33 +192,19 @@ function normalizeItemName(name) {
 
 function detectCategory(name) {
   if (!name) return '기타';
+  if (name.includes('스낵24')) return '스낵24 정기구독';
+  if (EVENT_ROW.test(name)) return '이벤트/모임';
 
-  // Check for bulk/mixed orders first
-  if (name.includes('스낵24')) return '정기구독(스낵24)';
-  if (name.match(/^(간식|음료|비품).*(대량|주문|구매|추가|조금|세트)/) || name === '이것저것 많이') return '혼합주문';
-
-  // Count category hits from comma-separated items
-  const items = name.split(',').map(s => s.trim());
+  // Count category hits over comma-separated items (first matching rule per item)
   const hits = {};
-
-  for (const item of items) {
-    for (const rule of CATEGORY_RULES) {
-      for (const kw of rule.keywords) {
-        if (item.includes(kw)) {
-          hits[rule.category] = (hits[rule.category] || 0) + 1;
-          break;
-        }
-      }
-    }
+  for (const item of name.split(',').map(s => s.trim()).filter(Boolean)) {
+    const rule = CATEGORY_RULES.find(r => r.keywords.some(kw => item.includes(kw)));
+    if (rule) hits[rule.category] = (hits[rule.category] || 0) + 1;
   }
-
   const entries = Object.entries(hits);
-  if (entries.length === 0) return '기타';
-  if (entries.length === 1) return entries[0][0];
-
-  // Pick dominant category (even on tie — pick first by priority order)
-  entries.sort((a, b) => b[1] - a[1]);
-  return entries[0][0];
+  if (entries.length) return entries.sort((a, b) => b[1] - a[1])[0][0];
+  if (BULK_ROW.test(name) || /^(간식|음료|비품)/.test(name) || name === '이것저것 많이') return '대량/혼합 주문';
+  return '기타';
 }
 
 function groupByCategoryDetected(records) {

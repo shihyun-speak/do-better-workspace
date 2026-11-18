@@ -7,6 +7,7 @@ const API_ROUTES = {
   '/api/log': 'api/log.js',
   '/api/parse-receipt': 'api/parse-receipt.js',
   '/api/recap': 'api/recap.js',
+  '/api/generations': 'api/generations.js',
 };
 
 const PORT = process.env.PORT || 3000;

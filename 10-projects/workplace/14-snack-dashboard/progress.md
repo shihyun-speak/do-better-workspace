@@ -95,6 +95,12 @@ Original notes (Ramp version):
 4. Optional: `ANTHROPIC_API_KEY` for receipt pre-fill
 5. Check the Ramp merchant name for Coupang matches `/coupang|쿠팡/i` (api/ramp.js `MERCHANT`)
 
+### Categories + live generations (2026-11-18, live)
+- Category rules rebuilt from real item names (`shared.js` CATEGORY_RULES, first match per item): 차, 음료, 우유/유제품, 과일, 단백질/건강, 과자/젤리, 빵/간편식, 디저트/아이스크림 + row-level 이벤트/모임, 대량/혼합 주문, 스낵24 정기구독. 기타 went from 39% of spend to 0%
+- Analytics legend shows the top 3 items under each slice
+- Generations now read live from the Notion 쩝쩝박사 페이지 (`api/generations.js`, env `NOTION_GEN_PAGE_ID=127792ec-2f10-80e0-8d31-d96b5d3037b5`, shared with Snack Claude on 11/18). Live page has 9대 (7/1-9/30) and 10대 (10/1-12/31), ₩150만. CONFIG in shared.js is the fallback; current BUDGET follows the latest generation
+- "Notion" button in the header of Dashboard and Analytics opens the 쩝쩝박사 page
+
 ### Monthly 정산 posts (2026-11-18, live)
 - `api/recap.js`, one Vercel Cron `0 1 * * 1,5` (Mon + Fri 10:00 KST; Hobby plan allows only 2 crons, restock has the other)
 - Format: Slack Block Kit cards, all English (2026-11-18). Buttons have emojis on the left; no divider

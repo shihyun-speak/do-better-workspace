@@ -27,6 +27,7 @@
     </div>
     <div class="flex items-center gap-3">
       <span id="data-status" class="text-xs font-bold text-ink-soft">Loading...</span>
+      <a href="https://app.notion.com/p/127792ec2f1080e08d31d96b5d3037b5" target="_blank" rel="noopener" class="btn bg-white border border-line h-9 px-3 flex items-center gap-1.5 text-sm text-ink-soft hover:text-ink" title="Open the 쩝쩝박사 page in Notion"><span class="material-symbols-outlined text-lg">open_in_new</span><span class="hidden sm:inline">Notion</span></a>
       <button onclick="fetch('/api/cache/clear',{method:'POST'}).finally(()=>location.reload())" class="btn bg-white border border-line w-9 h-9 flex items-center justify-center text-ink-soft hover:text-ink" title="Refresh" aria-label="Refresh">
         <span class="material-symbols-outlined text-lg">refresh</span>
       </button>
@@ -171,6 +172,7 @@ const SKIP_ITEM = /스낵24|대량|주문|구매|추가|정산|이용|이것저�
 
 async function init() {
   try {
+    await loadGenerations();
     const [all, os] = await Promise.all([fetchAllRecords(), fetchOfficeSnacks()]);
     allRecords = all;
     officeSnacks = os;
