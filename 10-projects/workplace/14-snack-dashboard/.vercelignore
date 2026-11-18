@@ -1,0 +1,13 @@
+# Only the site pages, shared JS and api/ get deployed. Everything else stays local.
+.env
+.env.*
+receipts/
+scripts/
+node_modules/
+server.js
+*.md
+*.png
+code.html
+code copy.html
+code copy 2.html
+.DS_Store

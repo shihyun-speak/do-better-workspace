@@ -90,7 +90,7 @@ function buildSlackMessage(items) {
       `🍿 *Weekly Restock Reminder*\n\n` +
       `Around this time last month, you ordered these — running low?\n\n` +
       `${lines}\n\n` +
-      `_Based on your orders ~4 weeks ago · 📊 <https://14-snack-dashboard.vercel.app|Open dashboard>_`,
+      `_Based on your orders ~4 weeks ago. 📊 <https://happy-nyam-nyam.vercel.app|Open dashboard>_`,
   };
 }
 

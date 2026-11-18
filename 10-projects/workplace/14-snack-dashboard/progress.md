@@ -1,6 +1,6 @@
 # Happy Nyam Nyam — Progress Tracker
 
-**Live URL**: https://14-snack-dashboard.vercel.app
+**Live URL**: https://happy-nyam-nyam.vercel.app (old https://14-snack-dashboard.vercel.app still works)
 **Started**: 2026-04-16
 
 ---
@@ -42,9 +42,68 @@
 - [x] **Generation Comparison** — avg monthly spend per 쩝쩝박사 generation (1대~8대)
 - [x] **Monthly Per-Capita** — cost per person with editable headcount
 
+### Receipt folder flow (2026-11-18), the chosen approach
+- [x] Drop receipt screenshots/photos in `receipts/inbox/` (gitignored), run `/snack-receipts` in Claude Code
+- [x] Claude reads each image, proposes items/date/vendor/event, Shihyun approves, edits or skips each one
+- [x] `scripts/log-snacks.mjs` saves approved items (one Notion row per item), checks vendor/event against DB options, flags possible duplicates (same date, same or contained item name), moves the receipt to `receipts/logged/`
+- [x] Tested with dry runs (validation, duplicate detection). First real save not done yet
+- Terminal fallback. Shihyun wants it on the website, so the To log page below is the main path
+
+### To log page (log.html), built 2026-11-18, DEPLOYED to production 2026-11-18 (with the clean design; `LOG_PASSCODE` set in Vercel prod; `.vercelignore` now keeps md/prototype/server files off the public site)
+- Paste order text box (no AI): rule-based parser for text copied from Coupang/Naver order pages. Written against a made-up sample; tune with a real copied page. Open question: is "5,280원 2개" a unit or line price?
+**Current version (receipt-only, no Ramp UI):** drop/choose/paste receipt, AI pre-fill (needs `ANTHROPIC_API_KEY`), compares items total with paid total from the receipt, duplicate check returns 409 and the page offers "Save anyway", "Saved this session" list. `api/ramp.js` is still in the repo but unused by the page.
+To go live: Vercel env `LOG_PASSCODE` + `ANTHROPIC_API_KEY`, then deploy.
+
+Original notes (Ramp version):
+- [x] Passcode-gated page (`LOG_PASSCODE`); passcode remembered in the browser, "Lock" clears it
+- [x] **From Ramp**: Coupang charges (last 45 days) not yet logged or dismissed; items pre-filled from Ramp's own receipt OCR (free, no AI). "Log" opens the editor, "Not snack" dismisses
+  - Dedupe: saved rows carry `Ramp:<txn id>` in 비고; dismissed IDs are rows in a separate Notion DB (`RAMP_DISMISS_DB_ID`)
+  - Editor shows items total vs Ramp charge, "Add the difference as 배송비/할인" button
+- [x] **Add a receipt**: drop / choose / paste a screenshot (shrunk to 1568px JPEG in the browser), or "enter items without a receipt"
+  - With `ANTHROPIC_API_KEY`: `/api/parse-receipt` pre-fills date, vendor, items (default `claude-haiku-5-5`, override with `ANTHROPIC_MODEL`)
+- [x] Save = one Notion row per item (상품명, 가격, 구매일, 구매처, Event, 비고). 구매자 (people) is not set; buyer name goes in 비고 for Ramp charges
+- [x] API: `api/log.js` (GET options + passcode check, POST save), `api/ramp.js`, `api/parse-receipt.js`, shared `api/_lib.js`; local `server.js` imports the same handlers
+- [x] Tested locally: passcode, options, validation, "not set up" states. A real Notion write and the Ramp calls are untested (no Ramp creds yet; Ramp code written from their OpenAPI spec)
+
+**Setup still needed**
+1. Vercel env: `LOG_PASSCODE` (local one is in `.env`)
+2. Ramp developer app (client credentials, scopes `transactions:read receipts:read`) -> `RAMP_CLIENT_ID`, `RAMP_CLIENT_SECRET`. Ask the Ramp admin (Finance)
+3. Notion DB for dismissed charges (one title column), shared with the snack integration -> `RAMP_DISMISS_DB_ID`
+4. Optional: `ANTHROPIC_API_KEY` for receipt pre-fill
+5. Check the Ramp merchant name for Coupang matches `/coupang|쿠팡/i` (api/ramp.js `MERCHANT`)
+
+### Monthly 정산 posts (2026-11-18, live)
+- `api/recap.js`, one Vercel Cron `0 1 * * 1,5` (Mon + Fri 10:00 KST; Hobby plan allows only 2 crons, restock has the other)
+- Format: Slack Block Kit cards, all English (2026-11-18). Buttons have emojis on the left; no divider
+- 4th Monday (day 22-28 KST): "🧾 Time to close out <Month>!" + tag Shihyun + green "🧾 Log your receipts" button (/log.html)
+- Friday of that week: header "🧾 <Month> Snack Recap: <mood>" (Budget Safe! 🟢 / Budget Tight 👀 / Over Budget! 🚨)", budget mood in the title only, no divider or budget row (Safe! 🟢 <70%, Getting tight 👀 70-100%, Over budget! 🚨), two columns: 🔥 Most popular top 3 / ✨ New this month (5 newest), "📊 See dashboard" button. Recaps the Monday's month even if Friday is in the next month
+- Test previews DM'd to Shihyun 2026-11-18 via the Bloop bot (BLOOP_SLACK_BOT_TOKEN); the nyam bot has no token, only the channel webhook
+- Schedule: 11/23 reminder, 11/27 recap; 12/28, then 2027-01-01 recap (holiday)
+- `?dry=1&kind=reminder|recap` previews; `?force=1&kind=...` + `x-log-passcode` posts now
+
+### Snack jar hero + green palette (2026-11-18, live)
+- Fresh green palette in `theme.js` (mint bg #F3FAF6, leaf green #1F8A5B accent, amber #D9822B for over budget); chart palettes in `shared.js` updated
+- Dashboard top: coin jar SVG (coin pile height = budget left, seeded so it is stable, coins drop in on load, one coin loops into the lid slot), count-up numbers, the 3 stat boxes folded into an inline stat row
+- Monthly bars grow in (staggered), cards lift slightly on hover; all motion off under prefers-reduced-motion
+- Base font 14px (site felt too big); To log page: big receipt picture, Ea column (qty in 비고 as "N개"), past-item autocomplete + last price, live comma formatting
+- URL: https://happy-nyam-nyam.vercel.app (alias added to the project; old URL still works)
+
+### Design refresh 2026-11-18 (cleaner look)
+- [x] `theme.js` moved to a neutral palette (white cards, #F7F7F8 background, zinc text), Pretendard font, smaller radii, lighter shadows; token names unchanged so markup stayed the same
+- [x] Old Fredoka/Nunito fonts removed, heavy weights toned down, nav pills now white/outlined
+- [x] Fixed Tailwind forms plugin overriding input borders; removed "·" separators from UI text
+
+### Fixes
+- [x] **2026-10-07: dashboard showed no data** — Notion `Event` column was changed from select to multi-select, so the `select equals` filter returned 400. `shared.js` now filters with `multi_select contains` and parses the first tag (falls back to `select`). Rows with multiple Event tags are counted under the first tag only.
+- [x] "Last month" range fixed (could pick the wrong month near month-end; now sets day 1 before subtracting)
+
 ### Design / UX
-- [x] Light theme — off-white + red/gold accents (The Strokes inspired)
-- [x] Space Grotesk + Space Mono fonts
+- [x] **2026-10-07 redesign** — warm "snack shop" look: cream background, hairline-border cards with soft shadows, Fredoka (headings) + Nunito (body), berry/mango/mint/blue/grape palette
+  - Shared theme in `theme.js` (Tailwind config + component CSS), used by both pages
+  - No emoji in the UI (first pass had them, user asked to remove); events shown as colored dots
+  - Dashboard layout: budget hero first ("₩X left", status label On track / Pace yourselves / Almost out, days left, daily allowance), stat tiles (orders, avg/order, last month), chart + request form, then Most ordered / Running low? / Recent purchases, then history with event filter chips
+  - Monthly chart: per-month dashed budget line (earlier gens had ₩125만), green = under, pink = over, current month faded
+  - Old separate budget alert banner folded into the hero status
 - [x] Top tab navigation (sidebar removed)
 - [x] "Happy Nyam Nyam" branding
 - [x] Item name normalization (루이보스차 → 루이보스, 제주감귤 → 감귤, etc.)
@@ -57,9 +116,11 @@
 - [ ] Dark mode toggle
 - [ ] Notion DB에 `카테고리` 필드 추가 → 수동 분류 (현재는 상품명 키워드 추정)
 - [ ] 스낵24 자동 연동 (위펀 앱 export 가능 여부 확인)
-- [ ] 영수증 입력 간소화 (Slack bot → Notion 자동 입력?)
+- [x] 영수증 입력 간소화 -> To log page (see above)
+- [ ] 스낵24 monthly auto-import: 위펀 monthly report email (no-reply@wefun.io) has an xlsx with a "N월 상세내역" sheet (출고일, 대분류/중분류, 품목, 수량, 단가, 합계 + 반품 rows). Filter to "(스낵)" 거래처; skip 플랜테리어24. Weekly "상품리스트 마감" email has no items
 - [ ] 이벤트별 예산 별도 tracking (Bi-weekly, Happy Hour)
-- [ ] Mobile responsive 최적화
+- [ ] Mobile responsive 최적화 (redesign is responsive but not visually checked on a phone yet)
+- [ ] Visually QA the 2026-10-07 redesign (Analytics page + mobile); headless screenshots failed
 - [ ] 쩝쩝박사 임기 카운트다운 위젯
 - [ ] CSV export 기능
 
@@ -69,8 +130,8 @@
 
 | Component | Tech |
 |-----------|------|
-| Frontend | Single-file HTML + Tailwind CSS (CDN) |
-| Fonts | Space Grotesk + Space Mono |
+| Frontend | HTML pages + Tailwind CSS (CDN), shared `theme.js` |
+| Fonts | Fredoka + Nunito (Google Fonts) |
 | Charts | Pure CSS bars + SVG donut (no library) |
 | Backend | Node.js proxy (`server.js`, zero deps) |
 | Data | Notion API (REST) |

@@ -19,16 +19,16 @@ const CONFIG = {
     { name: '8대', start: '2026-04-06', end: '2026-06-30' },
   ],
   CATEGORY_COLORS: {
-    '과자/스낵': '#0846ed',
-    '음료':     '#702ae1',
-    '과일':     '#ff9560',
-    '계절간식':  '#859aff',
-    '기타':     '#afadac',
-    '미분류':   '#e4e2e1',
+    '과자/스낵': '#1F8A5B',
+    '음료':     '#2B7A6B',
+    '과일':     '#E8A33D',
+    '계절간식':  '#8CC7A1',
+    '기타':     '#A3B8B0',
+    '미분류':   '#D5E3DC',
   },
   GEN_COLORS: [
-    '#0846ed', '#702ae1', '#ff9560', '#859aff',
-    '#dcc9ff', '#9c3f00', '#5c5b5b', '#dedcdc',
+    '#1F8A5B', '#2B7A6B', '#E8A33D', '#8CC7A1',
+    '#6E7FCF', '#D9822B', '#A3B8B0', '#D5E3DC',
   ],
 };
 
@@ -41,7 +41,7 @@ function parseNotionResults(results) {
       name: p['상품명']?.title?.[0]?.plain_text || '',
       date: p['구매일']?.date?.start || '',
       price: p['가격']?.number || 0,
-      event: p['Event']?.select?.name || '',
+      event: p['Event']?.multi_select?.[0]?.name || p['Event']?.select?.name || '',
       vendor: p['구매처']?.select?.name || '',
       note: p['비고']?.rich_text?.[0]?.plain_text || '',
     };
@@ -63,7 +63,7 @@ async function fetchSnacks(filter, sorts) {
 // Fetch all Office Snacks
 async function fetchOfficeSnacks() {
   return fetchSnacks(
-    { property: 'Event', select: { equals: 'Office Snacks' } },
+    { property: 'Event', multi_select: { contains: 'Office Snacks' } },
     [{ property: '구매일', direction: 'descending' }]
   );
 }
@@ -87,6 +87,10 @@ function formatKRW(n) {
 
 function formatKRWFull(n) {
   return `₩${krwFmt.format(n)}`;
+}
+
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
 function formatDate(dateStr) {

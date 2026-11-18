@@ -4,259 +4,170 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>Happy Nyam Nyam</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='14' fill='%231F8A5B'/></svg>"/>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-<script id="tailwind-config">
-tailwind.config = {
-  theme: {
-    extend: {
-      colors: {
-        "surface": "#faf9f7",
-        "surface-dim": "#eeedeb",
-        "surface-container-lowest": "#ffffff",
-        "surface-container-low": "#f4f3f1",
-        "surface-container": "#eeedeb",
-        "surface-container-high": "#e5e4e2",
-        "surface-container-highest": "#dcdbd9",
-        "surface-variant": "#e5e4e2",
-        "on-surface": "#1a1a1a",
-        "on-surface-variant": "#6b6966",
-        "outline": "#8a8886",
-        "outline-variant": "#d0cfcd",
-        "primary": "#2d8a4e",
-        "primary-dim": "#236b3c",
-        "primary-container": "#d4f5e0",
-        "on-primary": "#ffffff",
-        "on-primary-container": "#0a3d1a",
-        "secondary": "#d4a017",
-        "secondary-dim": "#b58a12",
-        "secondary-container": "#fff4cc",
-        "on-secondary": "#ffffff",
-        "on-secondary-container": "#3a2e00",
-        "tertiary": "#e67e22",
-        "tertiary-container": "#fde8d0",
-        "on-tertiary": "#ffffff",
-        "error": "#c1272d",
-        "error-container": "#ffd6d6",
-        "on-error": "#ffffff",
-        "background": "#faf9f7",
-        "on-background": "#1a1a1a",
-        "inverse-surface": "#1a1a1a",
-        "inverse-on-surface": "#f4f3f1",
-      },
-      borderRadius: { DEFAULT: "0.25rem", lg: "0.5rem", xl: "0.75rem", full: "9999px" },
-      fontFamily: {
-        headline: ["Space Grotesk"],
-        body: ["Space Grotesk"],
-        label: ["Space Grotesk"]
-      }
-    },
-  },
-}
-</script>
-<style>
-.material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
-.text-gradient { background: linear-gradient(135deg, #2d8a4e 0%, #4caf50 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-.gradient-warning { background: linear-gradient(135deg, #e67e22 0%, #f39c12 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-.gradient-error { background: linear-gradient(135deg, #c1272d 0%, #e74c3c 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-.tab-active { color: #2d8a4e; border-bottom: 2px solid #2d8a4e; }
-.tab-inactive { color: #6b6966; border-bottom: 2px solid transparent; }
-.tab-inactive:hover { color: #1a1a1a; }
-@keyframes pulse-alert { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
-.alert-pulse { animation: pulse-alert 2s ease-in-out infinite; }
-.card { border: 1px solid #e5e4e2; }
-</style>
+<script src="theme.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
 </head>
-<body class="bg-surface font-body text-on-surface">
+<body class="font-body text-ink min-h-screen">
 
 <!-- Top Nav -->
-<header class="sticky top-0 w-full z-50 bg-white/80 backdrop-blur-xl border-b border-outline-variant/30">
-  <div class="max-w-7xl mx-auto px-8 flex items-center justify-between h-16">
-    <div class="flex items-center gap-8">
-      <h1 class="text-2xl font-bold font-headline tracking-tight uppercase text-primary">Happy Nyam Nyam</h1>
+<header class="sticky top-0 z-50 bg-cream/90 backdrop-blur-md border-b border-line">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
+    <div class="flex items-center gap-4 sm:gap-8">
+      <a href="index.html" class="flex items-center gap-2.5">
+        <span class="w-2.5 h-2.5 rounded-full bg-mint"></span>
+        <span class="font-display font-bold text-lg sm:text-xl leading-none">Happy Nyam Nyam</span>
+      </a>
       <nav class="flex gap-1">
-        <a href="index.html" class="tab-active px-4 py-5 text-sm font-semibold transition-all">Dashboard</a>
-        <a href="analytics.html" class="tab-inactive px-4 py-5 text-sm font-semibold transition-all">Analytics</a>
+        <a href="index.html" class="nav-pill active">Dashboard</a>
+        <a href="analytics.html" class="nav-pill">Analytics</a>
+        <a href="log.html" class="nav-pill">To log</a>
       </nav>
     </div>
-    <div class="flex items-center gap-4">
-      <span id="data-status" class="text-[10px] font-bold py-1 px-2 bg-primary/10 text-primary rounded-full">Loading...</span>
-      <span class="text-[10px] text-on-surface-variant" id="last-updated"></span>
-      <button onclick="fetch('/api/cache/clear',{method:'POST'}).then(()=>location.reload())" class="p-1.5 hover:bg-surface-container-high rounded-lg transition-all text-on-surface-variant" title="Refresh">
+    <div class="flex items-center gap-3">
+      <span id="data-status" class="text-xs font-bold text-ink-soft">Loading...</span>
+      <button onclick="fetch('/api/cache/clear',{method:'POST'}).finally(()=>location.reload())" class="btn bg-white border border-line w-9 h-9 flex items-center justify-center text-ink-soft hover:text-ink" title="Refresh" aria-label="Refresh">
         <span class="material-symbols-outlined text-lg">refresh</span>
       </button>
     </div>
   </div>
 </header>
 
-<!-- Main Content -->
-<main class="max-w-7xl mx-auto px-8 py-8 space-y-6">
+<main class="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-6">
 
-  <!-- Budget Alert Banner -->
-  <div id="budget-alert" class="hidden"></div>
+  <!-- Row 1: Snack jar hero (budget left drains like a jar) -->
+  <section id="budget-hero" class="hero relative overflow-hidden rounded-3xl px-6 sm:px-10 py-8 sm:py-10">
+    <div class="animate-pulse grid sm:grid-cols-[220px_1fr] gap-8 items-center">
+      <div class="h-60 bg-white/60 rounded-[2.5rem]"></div>
+      <div class="space-y-4"><div class="h-4 bg-white/70 rounded-full w-1/3"></div><div class="h-14 bg-white/70 rounded-2xl w-2/3"></div><div class="h-4 bg-white/70 rounded-full w-1/2"></div></div>
+    </div>
+  </section>
 
-  <!-- Two-Column Layout: Overview | Snack Request -->
-  <div class="grid grid-cols-12 gap-6">
-
-    <!-- LEFT: Budget Overview -->
-    <div class="col-span-12 lg:col-span-7 space-y-6">
-
-      <!-- Budget Gauge -->
-      <div class="bg-white p-8 rounded-2xl card relative overflow-hidden group">
-        <div id="budget-gauge" class="relative z-10">
-          <div class="animate-pulse space-y-4">
-            <div class="h-4 bg-surface-container-high rounded w-1/3"></div>
-            <div class="h-12 bg-surface-container-high rounded w-2/3"></div>
-            <div class="h-4 bg-surface-container-high rounded-full"></div>
-          </div>
+  <!-- Row 2: Monthly chart + Request form -->
+  <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="card p-6 sm:p-8 lg:col-span-2">
+      <div class="flex flex-wrap justify-between items-start gap-3 mb-8">
+        <div>
+          <h2 class="font-display font-semibold text-xl">Monthly spending</h2>
+          <p class="text-sm text-ink-soft">Office Snacks, last 12 months</p>
         </div>
-        <div class="absolute -right-12 -bottom-12 w-48 h-48 bg-primary/5 rounded-full blur-3xl group-hover:bg-primary/8 transition-all"></div>
-      </div>
-
-      <!-- Monthly Spending Trend -->
-      <div class="bg-white p-8 rounded-2xl card">
-        <div class="flex justify-between items-start mb-8">
-          <div>
-            <h3 class="font-headline font-bold text-xl text-on-surface tracking-tight">Monthly Spending</h3>
-            <p class="text-xs text-on-surface-variant">Office Snacks by month</p>
-          </div>
-        </div>
-        <div id="monthly-chart" class="h-48 flex items-end justify-between gap-3">
-          <div class="animate-pulse flex items-end justify-between gap-3 w-full h-full">
-            <div class="flex-1 bg-surface-container-high rounded-t-lg h-1/3"></div>
-            <div class="flex-1 bg-surface-container-high rounded-t-lg h-1/2"></div>
-            <div class="flex-1 bg-surface-container-high rounded-t-lg h-2/3"></div>
-            <div class="flex-1 bg-surface-container-high rounded-t-lg h-1/4"></div>
-            <div class="flex-1 bg-surface-container-high rounded-t-lg h-3/4"></div>
-            <div class="flex-1 bg-surface-container-high rounded-t-lg h-2/5"></div>
-          </div>
+        <div class="flex flex-wrap items-center gap-4 text-xs font-semibold text-ink-soft">
+          <span class="flex items-center gap-1.5"><span class="dot bg-mint"></span>Under budget</span>
+          <span class="flex items-center gap-1.5"><span class="dot bg-berry"></span>Over</span>
+          <span class="flex items-center gap-1.5"><span class="w-4 border-t-2 border-dashed border-ink/40"></span>Budget</span>
         </div>
       </div>
-
-      <!-- This Month Quick Stats -->
-      <div class="bg-white p-6 rounded-2xl card">
-        <div class="flex justify-between items-center mb-5">
-          <h3 class="font-body font-bold text-base text-on-surface">This Month</h3>
-          <span class="text-[9px] font-bold py-1 px-2 bg-primary/10 text-primary rounded-full uppercase">Office Snacks</span>
-        </div>
-        <div class="space-y-3">
-          <div class="flex items-center justify-between">
-            <span class="text-xs text-on-surface-variant uppercase tracking-wider">Orders</span>
-            <span id="stat-orders" class="text-2xl font-extrabold font-headline text-on-surface">-</span>
-          </div>
-          <div class="flex items-center justify-between">
-            <span class="text-xs text-on-surface-variant uppercase tracking-wider">Avg / Order</span>
-            <span id="stat-avg" class="text-2xl font-extrabold font-headline text-on-surface">-</span>
-          </div>
+      <div id="monthly-chart" class="h-64">
+        <div class="animate-pulse flex items-end justify-between gap-3 w-full h-full">
+          <div class="flex-1 bg-cream-deep rounded-t-lg h-1/3"></div>
+          <div class="flex-1 bg-cream-deep rounded-t-lg h-1/2"></div>
+          <div class="flex-1 bg-cream-deep rounded-t-lg h-2/3"></div>
+          <div class="flex-1 bg-cream-deep rounded-t-lg h-1/4"></div>
+          <div class="flex-1 bg-cream-deep rounded-t-lg h-3/4"></div>
+          <div class="flex-1 bg-cream-deep rounded-t-lg h-2/5"></div>
         </div>
       </div>
     </div>
 
-    <!-- RIGHT: Snack Request -->
-    <div class="col-span-12 lg:col-span-5 space-y-6">
-
-      <!-- Snack Request Form -->
-      <div class="bg-white p-6 rounded-2xl card">
-        <div class="flex items-center gap-2 mb-5">
-          <span class="material-symbols-outlined text-primary text-lg" style="font-variation-settings: 'FILL' 1;">add_shopping_cart</span>
-          <h3 class="font-body font-bold text-base text-on-surface">Request a Snack</h3>
+    <div class="card p-6 sm:p-7">
+      <h2 class="font-display font-semibold text-xl">Request a snack</h2>
+      <p class="text-sm text-ink-soft mb-5">Posts to #happy-nyam-nyam for the 쩝쩝박사.</p>
+      <form id="snack-request-form" class="space-y-3">
+        <div>
+          <label for="req-name" class="eyebrow block mb-1">Your name</label>
+          <input id="req-name" type="text" required placeholder="e.g. Jiwon" class="field"/>
         </div>
-        <form id="snack-request-form" class="space-y-3">
-          <div>
-            <label class="text-xs text-on-surface-variant uppercase tracking-wider block mb-1">Your Name</label>
-            <input id="req-name" type="text" required placeholder="e.g. Jiwon" class="w-full bg-surface-container-low border border-outline-variant/30 rounded-lg text-xs py-2 px-3 focus:ring-1 focus:ring-primary/30 font-headline"/>
-          </div>
-          <div>
-            <label class="text-xs text-on-surface-variant uppercase tracking-wider block mb-1">Snack Name</label>
-            <input id="req-snack" type="text" required placeholder="e.g. 허니버터칩" class="w-full bg-surface-container-low border border-outline-variant/30 rounded-lg text-xs py-2 px-3 focus:ring-1 focus:ring-primary/30 font-headline"/>
-          </div>
-          <div>
-            <label class="text-xs text-on-surface-variant uppercase tracking-wider block mb-1">Purchase Link <span class="text-on-surface-variant/50">(optional)</span></label>
-            <input id="req-link" type="url" placeholder="https://..." class="w-full bg-surface-container-low border border-outline-variant/30 rounded-lg text-xs py-2 px-3 focus:ring-1 focus:ring-primary/30 font-body"/>
-          </div>
-          <button type="submit" class="w-full bg-primary text-on-primary py-2.5 rounded-lg font-headline font-bold text-xs uppercase tracking-wider hover:bg-primary-dim transition-all">
-            Send to #happy-nyam-nyam
-          </button>
-          <div id="req-status" class="hidden text-xs text-center py-2 rounded-lg font-headline"></div>
-        </form>
-      </div>
-
-      <!-- Popular Items Ranking -->
-      <div class="bg-white p-6 rounded-2xl card">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="font-body font-bold text-base text-on-surface">Popular Items</h3>
-          <span class="text-[9px] font-bold py-1 px-2 bg-secondary/10 text-secondary rounded-full uppercase">All Time</span>
+        <div>
+          <label for="req-snack" class="eyebrow block mb-1">Snack</label>
+          <input id="req-snack" type="text" required placeholder="e.g. 허니버터칩" class="field"/>
         </div>
-        <div id="popular-list" class="space-y-3">
-          <div class="animate-pulse space-y-3">
-            <div class="h-6 bg-surface-container-high rounded"></div>
-            <div class="h-6 bg-surface-container-high rounded"></div>
-            <div class="h-6 bg-surface-container-high rounded"></div>
-          </div>
+        <div>
+          <label for="req-link" class="eyebrow block mb-1">Link <span class="normal-case tracking-normal font-semibold">(optional)</span></label>
+          <input id="req-link" type="url" placeholder="https://..." class="field"/>
         </div>
-      </div>
-
-      <!-- Restock Reminder -->
-      <div class="bg-white p-6 rounded-2xl card">
-        <div class="flex items-center gap-2 mb-4">
-          <span class="material-symbols-outlined text-tertiary text-lg">notifications_active</span>
-          <h3 class="font-body font-bold text-base text-on-surface">Restock Reminder</h3>
-        </div>
-        <div id="restock-list" class="space-y-3">
-          <div class="animate-pulse space-y-3">
-            <div class="h-6 bg-surface-container-high rounded"></div>
-            <div class="h-6 bg-surface-container-high rounded"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Recent Purchases -->
-      <div class="bg-white p-6 rounded-2xl card">
-        <h3 class="font-body font-bold text-base text-on-surface mb-4">Recent Purchases</h3>
-        <div id="recent-list" class="space-y-4">
-          <div class="animate-pulse space-y-3">
-            <div class="h-10 bg-surface-container-high rounded-xl"></div>
-            <div class="h-10 bg-surface-container-high rounded-xl"></div>
-            <div class="h-10 bg-surface-container-high rounded-xl"></div>
-          </div>
-        </div>
-      </div>
+        <button type="submit" class="btn w-full bg-mint text-white py-3 mt-1">Send request</button>
+        <div id="req-status" class="hidden text-sm font-bold text-center py-2 rounded-xl"></div>
+      </form>
     </div>
-  </div>
+  </section>
 
-  <!-- Purchase History (full width) -->
-  <div class="bg-white p-6 rounded-2xl card">
-      <div class="flex justify-between items-center mb-6">
-        <h3 class="font-body font-bold text-base text-on-surface">Purchase History</h3>
-        <div class="flex items-center gap-3">
-          <div class="relative">
-            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">search</span>
-            <input id="search-input" class="bg-surface-container-low border border-outline-variant/30 py-1.5 pl-9 pr-4 rounded-lg text-xs focus:ring-1 focus:ring-primary/30 w-48" placeholder="Search..." type="text"/>
-          </div>
-          <select id="event-filter" class="bg-surface-container-low border border-outline-variant/30 rounded-lg text-[10px] font-bold py-1.5 px-3 focus:ring-0">
-            <option value="">All Events</option>
-            <option value="Office Snacks">Office Snacks</option>
-            <option value="Bi-weekly">Bi-weekly</option>
-            <option value="Happy Hour">Happy Hour</option>
-            <option value="Other Events">Other Events</option>
-          </select>
-        </div>
+  <!-- Row 3: Popular / Restock / Recent -->
+  <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div class="card p-6">
+      <div class="flex items-baseline justify-between mb-4">
+        <h2 class="font-display font-semibold text-lg">Most ordered</h2>
+        <span class="text-xs font-semibold text-ink-soft">All time</span>
       </div>
-      <div id="history-table" class="overflow-x-auto max-h-96 overflow-y-auto">
+      <div id="popular-list" class="space-y-3">
         <div class="animate-pulse space-y-3">
-          <div class="h-8 bg-surface-container-high rounded"></div>
-          <div class="h-8 bg-surface-container-high rounded"></div>
-          <div class="h-8 bg-surface-container-high rounded"></div>
+          <div class="h-8 bg-cream-deep rounded-lg"></div>
+          <div class="h-8 bg-cream-deep rounded-lg"></div>
+          <div class="h-8 bg-cream-deep rounded-lg"></div>
         </div>
       </div>
     </div>
 
+    <div class="card p-6">
+      <div class="mb-4">
+        <h2 class="font-display font-semibold text-lg">Running low?</h2>
+        <p class="text-xs text-ink-soft">Regulars not reordered in 2+ weeks</p>
+      </div>
+      <div id="restock-list" class="divide-y divide-line">
+        <div class="animate-pulse space-y-3">
+          <div class="h-8 bg-cream-deep rounded-lg"></div>
+          <div class="h-8 bg-cream-deep rounded-lg"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card p-6">
+      <h2 class="font-display font-semibold text-lg mb-4">Recent purchases</h2>
+      <div id="recent-list" class="divide-y divide-line">
+        <div class="animate-pulse space-y-3">
+          <div class="h-8 bg-cream-deep rounded-lg"></div>
+          <div class="h-8 bg-cream-deep rounded-lg"></div>
+          <div class="h-8 bg-cream-deep rounded-lg"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Row 4: Purchase History -->
+  <section class="card p-6 sm:p-8">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
+      <h2 class="font-display font-semibold text-xl">Purchase history</h2>
+      <div class="relative md:w-64">
+        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-ink-soft text-lg">search</span>
+        <input id="search-input" class="field !pl-10" placeholder="Search item or vendor" type="text"/>
+      </div>
+    </div>
+    <div id="event-chips" class="flex flex-wrap gap-2 mb-5">
+      <button class="chip active" data-event="">All</button>
+      <button class="chip" data-event="Office Snacks"><span class="dot bg-mint"></span>Office Snacks</button>
+      <button class="chip" data-event="Bi-weekly"><span class="dot bg-blue"></span>Bi-weekly</button>
+      <button class="chip" data-event="Happy Hour"><span class="dot bg-mango"></span>Happy Hour</button>
+      <button class="chip" data-event="Other Events"><span class="dot bg-grape"></span>Other Events</button>
+    </div>
+    <div id="history-table" class="overflow-x-auto max-h-[28rem] overflow-y-auto rounded-xl border border-line">
+      <div class="animate-pulse space-y-2 p-4">
+        <div class="h-8 bg-cream-deep rounded-lg"></div>
+        <div class="h-8 bg-cream-deep rounded-lg"></div>
+        <div class="h-8 bg-cream-deep rounded-lg"></div>
+      </div>
+    </div>
+  </section>
+
+  <p class="text-center text-xs text-ink-soft pb-4">People Ops, data from Notion</p>
 </main>
 
 <script src="shared.js"></script>
 <script>
 let allRecords = [];
 let officeSnacks = [];
+let historyEvent = '';
+
+const SKIP_ITEM = /스낵24|대량|주문|구매|추가|정산|이용|이것저것/;
 
 async function init() {
   try {
@@ -264,11 +175,10 @@ async function init() {
     allRecords = all;
     officeSnacks = os;
 
-    document.getElementById('data-status').textContent = `${all.length} records`;
-    document.getElementById('last-updated').textContent = new Date().toLocaleTimeString('ko-KR');
+    const time = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+    document.getElementById('data-status').textContent = `${all.length} records, updated ${time}`;
 
-    renderBudgetGauge();
-    renderBudgetAlert();
+    renderBudgetHero();
     renderMonthlyChart();
     renderQuickStats();
     renderPopularItems();
@@ -277,291 +187,288 @@ async function init() {
     renderHistoryTable();
   } catch (err) {
     console.error(err);
-    document.getElementById('data-status').textContent = 'Error';
-    document.getElementById('data-status').className = 'text-[10px] font-bold py-1 px-2 bg-error/10 text-error rounded-full';
+    const s = document.getElementById('data-status');
+    s.textContent = 'Error loading data';
+    s.classList.add('text-berry');
+    document.getElementById('budget-hero').innerHTML = `
+      <p class="font-display font-semibold text-2xl">Couldn't load the snack data</p>
+      <p class="text-sm text-ink-soft mt-1">${esc(err.message)}</p>
+      <button onclick="location.reload()" class="btn mt-4 bg-ink text-cream px-4 py-2 text-sm">Try again</button>`;
   }
 }
 
-// ── Budget Alert Banner ────────────────────────────────
-function renderBudgetAlert() {
-  const now = new Date();
-  const { start, end } = getMonthRange(now);
-  const thisMonth = officeSnacks.filter(r => r.date >= start && r.date <= end);
-  const spent = thisMonth.reduce((s, r) => s + r.price, 0);
-  const pct = Math.round((spent / CONFIG.BUDGET) * 100);
-  const el = document.getElementById('budget-alert');
-
-  if (pct >= 90) {
-    el.className = 'bg-error/10 border border-error/20 rounded-2xl p-4 flex items-center gap-4 alert-pulse';
-    el.innerHTML = `
-      <span class="material-symbols-outlined text-error text-2xl">emergency</span>
-      <div class="flex-1">
-        <p class="font-headline font-bold text-error">Budget Critical — ${pct}% used</p>
-        <p class="text-xs text-error/70">Only ${formatKRWFull(CONFIG.BUDGET - spent)} remaining. Consider pausing non-essential orders.</p>
-      </div>
-    `;
-  } else if (pct >= 70) {
-    el.className = 'bg-tertiary/10 border border-tertiary/20 rounded-2xl p-4 flex items-center gap-4';
-    el.innerHTML = `
-      <span class="material-symbols-outlined text-tertiary text-2xl">warning</span>
-      <div class="flex-1">
-        <p class="font-headline font-bold text-tertiary">Budget Caution — ${pct}% used</p>
-        <p class="text-xs text-tertiary/70">${formatKRWFull(CONFIG.BUDGET - spent)} remaining with ${getDaysRemaining()} days left.</p>
-      </div>
-    `;
-  }
+function thisMonthSnacks() {
+  const { start, end } = getMonthRange(new Date());
+  return officeSnacks.filter(r => r.date >= start && r.date <= end);
 }
 
-// ── Budget Gauge ───────────────────────────────────────
-function renderBudgetGauge() {
-  const now = new Date();
-  const { start, end } = getMonthRange(now);
-  const thisMonth = officeSnacks.filter(r => r.date >= start && r.date <= end);
-  const spent = thisMonth.reduce((sum, r) => sum + r.price, 0);
+// ── Budget Hero: the coin jar ──────────────────────────
+// Coin pile height = budget left. Coins drop in on load (bottom rows first), numbers count up.
+const JAR_PATH = 'M62 30 H138 Q146 30 146 38 V50 Q178 62 178 100 V210 Q178 234 154 234 H46 Q22 234 22 210 V100 Q22 62 54 50 V38 Q54 30 62 30 Z';
+const JAR_TOP = 64, JAR_BOTTOM = 234; // fillable area inside the jar (svg units)
+
+// Small seeded random so the pile looks the same on every load
+function seeded(seed) { return () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }; }
+
+function coinPile(levelY) {
+  const rnd = seeded(7);
+  const coins = [];
+  const ROW = 7.5;
+  let row = 0;
+  for (let y = JAR_BOTTOM - 9; y > levelY - 2; y -= ROW, row++) {
+    const nearTop = y - levelY < ROW * 1.5;
+    const offset = row % 2 ? 12 : 0;
+    for (let x = 30 + offset; x <= 170; x += 24) {
+      if (nearTop && rnd() < 0.35) continue; // uneven top of the pile
+      const jx = x + (rnd() - 0.5) * 6, jy = y + (rnd() - 0.5) * 2;
+      const tilt = nearTop ? (rnd() - 0.5) * 30 : (rnd() - 0.5) * 6;
+      const delay = (row * 0.05 + rnd() * 0.25).toFixed(2);
+      coins.push(`<g class="coin" style="animation-delay:${delay}s"><g transform="translate(${jx.toFixed(1)} ${jy.toFixed(1)}) rotate(${tilt.toFixed(1)})">
+        <ellipse cx="0" cy="2.6" rx="13" ry="5" fill="#B9822A"/>
+        <ellipse cx="0" cy="0" rx="13" ry="5" fill="#E9B949"/>
+        <ellipse cx="0" cy="0" rx="8.5" ry="3" fill="none" stroke="#C9952F" stroke-width="1"/>
+        <ellipse cx="-4" cy="-1.4" rx="4" ry="1.2" fill="#FBE5A2" opacity=".85"/>
+      </g></g>`);
+    }
+  }
+  return coins.join('');
+}
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function countUp(el, to, fmt = (n) => n.toLocaleString('ko-KR'), ms = 1100) {
+  if (!el) return;
+  if (reduceMotion) { el.textContent = fmt(to); return; }
+  const t0 = performance.now();
+  const step = (t) => {
+    const k = Math.min(1, (t - t0) / ms);
+    const eased = 1 - Math.pow(1 - k, 3);
+    el.textContent = fmt(Math.round(to * eased));
+    if (k < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+function renderBudgetHero() {
+  const spent = thisMonthSnacks().reduce((s, r) => s + r.price, 0);
   const budget = CONFIG.BUDGET;
   const remaining = budget - spent;
   const pct = Math.round((spent / budget) * 100);
+  const left = Math.max(0, Math.min(1, remaining / budget));
   const daysLeft = getDaysRemaining();
-  const status = getBudgetStatus(pct);
+  const perDay = remaining > 0 ? Math.floor(remaining / (daysLeft + 1)) : 0;
 
-  const gradientClass = pct >= 90 ? 'gradient-error' : pct >= 70 ? 'gradient-warning' : 'text-gradient';
-  const barColor = pct >= 90
-    ? 'bg-gradient-to-r from-error to-primary-container'
+  const status = pct >= 90
+    ? { color: 'berry', hex: '#D9822B', light: '#F2B97A', label: 'Almost out', note: 'Only a few coins left. Maybe pause non-essential orders.' }
     : pct >= 70
-      ? 'bg-gradient-to-r from-tertiary to-tertiary-container'
-      : 'bg-gradient-to-r from-primary to-secondary';
+      ? { color: 'mango', hex: '#E8A33D', light: '#F5CD87', label: 'Pace yourselves', note: 'Over 70% of the coins are spent.' }
+      : { color: 'mint', hex: '#1F8A5B', light: '#7CC4A0', label: 'On track', note: 'Plenty of coins left this month.' };
 
-  document.getElementById('budget-gauge').innerHTML = `
-    <h3 class="font-headline font-bold text-[10px] uppercase tracking-[0.15em] text-on-surface-variant mb-6">Budget Gauge</h3>
-    <div class="flex items-baseline gap-2 mb-1">
-      <span class="text-5xl font-extrabold font-headline tracking-tighter ${gradientClass}">${formatKRW(spent)}</span>
-      <span class="text-on-surface-variant font-medium text-sm">/ ${formatKRW(budget)}</span>
-    </div>
-    <p class="text-xs text-on-surface-variant mb-6">${pct}% of monthly budget utilized</p>
-    <div class="w-full h-3 bg-surface-container-high rounded-full overflow-hidden mb-6">
-      <div class="h-full ${barColor} rounded-full transition-all duration-700" style="width:${Math.min(pct, 100)}%"></div>
-    </div>
-    <div class="flex justify-between items-center">
-      <div class="flex items-center gap-2">
-        <div class="w-2 h-2 rounded-full ${pct >= 90 ? 'bg-error' : pct >= 70 ? 'bg-tertiary' : 'bg-primary'}"></div>
-        <span class="text-[10px] font-bold">Remaining: ${formatKRWFull(remaining)}</span>
+  const levelY = JAR_TOP + (1 - left) * (JAR_BOTTOM - JAR_TOP); // top of the coin pile
+
+  const hero = document.getElementById('budget-hero');
+  hero.innerHTML = `
+    <div class="grid grid-cols-1 sm:grid-cols-[230px_1fr] gap-8 sm:gap-12 items-center">
+      <div class="relative mx-auto w-[200px] sm:w-[230px]" style="aspect-ratio: 200 / 240">
+        <svg viewBox="0 0 200 240" class="absolute inset-0 w-full h-full overflow-visible" aria-hidden="true">
+          <defs><clipPath id="jar-clip"><path d="${JAR_PATH}"/></clipPath></defs>
+          <rect x="58" y="14" width="84" height="20" rx="7" fill="#16302B" opacity=".88"/>
+          <rect x="82" y="21" width="36" height="5" rx="2.5" fill="#000" opacity=".45"/>
+          <path d="${JAR_PATH}" fill="#fff" fill-opacity=".72"/>
+          <g clip-path="url(#jar-clip)">${coinPile(levelY)}</g>
+          <path d="${JAR_PATH}" fill="#fff" fill-opacity=".12" stroke="#16302B" stroke-opacity=".14" stroke-width="2"/>
+          <path d="M40 104 Q38 150 42 196" fill="none" stroke="#fff" stroke-opacity=".75" stroke-width="6" stroke-linecap="round"/>
+        </svg>
+        <div class="coin-float" aria-hidden="true"></div>
       </div>
-      <span class="text-[10px] font-bold py-1 px-3 ${status.bgClass} ${status.textClass} rounded-full">${daysLeft} Days Left</span>
-    </div>
-  `;
+
+      <div class="min-w-0">
+        <div class="flex flex-wrap items-center gap-3">
+          <p class="text-sm font-semibold text-ink-soft">${getMonthLabel(new Date().toISOString())} coin jar</p>
+          <span class="chip bg-white/80 !border-transparent text-ink"><span class="dot bg-${status.color}"></span>${status.label}</span>
+        </div>
+        <div class="mt-3 flex flex-wrap items-baseline gap-x-3">
+          <span id="hero-left" class="font-display font-bold text-5xl sm:text-6xl tracking-tight">₩0</span>
+          <span class="font-display text-xl text-ink-soft">${remaining >= 0 ? 'left' : 'over budget'}</span>
+        </div>
+        <p class="text-sm text-ink-soft mt-2">${formatKRWFull(spent)} spent of ${formatKRWFull(budget)} (${pct}%). ${status.note}</p>
+
+        <dl class="hero-stats mt-7 flex flex-wrap gap-y-4">
+          <div><dt>Days left</dt><dd>${daysLeft}</dd></div>
+          <div><dt>Per day</dt><dd>${remaining > 0 ? formatKRWFull(perDay) : '-'}</dd></div>
+          <div><dt>Orders</dt><dd id="stat-orders">-</dd></div>
+          <div><dt>Avg / order</dt><dd id="stat-avg">-</dd></div>
+          <div><dt>Last month</dt><dd id="stat-last">-</dd></div>
+        </dl>
+      </div>
+    </div>`;
+
+  countUp(document.getElementById('hero-left'), Math.abs(remaining), formatKRWFull);
 }
 
 // ── Monthly Chart ──────────────────────────────────────
 function renderMonthlyChart() {
-  const monthly = groupByMonth(officeSnacks);
-  const last12 = monthly.slice(-12);
-  if (last12.length === 0) { document.getElementById('monthly-chart').innerHTML = '<p class="text-on-surface-variant text-sm">No data</p>'; return; }
+  const last12 = groupByMonth(officeSnacks).slice(-12);
+  const chart = document.getElementById('monthly-chart');
+  if (last12.length === 0) { chart.innerHTML = '<p class="text-ink-soft text-sm">No data yet</p>'; return; }
 
-  const maxSpend = Math.max(...last12.map(m => m.total));
-  const budgetLineHeight = Math.min((CONFIG.BUDGET / maxSpend) * 100, 100);
+  const scaleMax = Math.max(...last12.map(m => m.total), CONFIG.BUDGET) * 1.08;
+  const currentYm = getMonthRange(new Date()).start.substring(0, 7);
 
-  let html = '';
-  last12.forEach((m, i) => {
-    const heightPct = (m.total / maxSpend) * 100;
+  const months = last12.map(m => {
     const gen = getGeneration(m.records[0]?.date);
     const budget = getBudgetForGen(gen);
-    const overBudget = m.total > budget;
-    const monthLabel = getMonthLabel(m.records[0]?.date);
-    const barColor = overBudget ? '#c1272d' : (i % 2 === 0 ? '#2d8a4e' : '#d4a017');
-
-    html += `
-      <div class="flex-1 flex flex-col items-end min-w-0" style="height:100%">
-        <div class="w-full flex-1 flex items-end">
-          <div class="w-full rounded-t relative group hover:opacity-80 transition-all cursor-pointer"
-               style="height:${heightPct}%; background:${barColor}; opacity:${overBudget ? 1 : 0.8}">
-            <div class="absolute -top-10 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 bg-inverse-surface text-inverse-on-surface text-[10px] py-1 px-2 rounded transition-all whitespace-nowrap z-10">
-              ${formatKRWFull(m.total)}
-            </div>
-          </div>
-        </div>
-        <span class="text-[8px] font-bold text-on-surface-variant uppercase leading-tight text-center mt-2 w-full">${monthLabel}<br/>${gen}</span>
-      </div>
-    `;
+    return { ...m, gen, budget, over: m.total > budget, isNow: m.month === currentYm };
   });
 
-  document.getElementById('monthly-chart').innerHTML = `
-    <div class="relative w-full h-full flex items-end justify-between gap-2">
-      <div class="absolute w-full border-t-2 border-dashed border-tertiary/40 z-10" style="bottom:${budgetLineHeight}%">
-        <span class="absolute -top-4 right-0 text-[8px] font-bold text-tertiary">${formatKRW(CONFIG.BUDGET)}</span>
+  const bars = months.map((m, i) => `
+    <div class="relative flex-1 min-w-0 h-full flex items-end">
+      <div class="absolute -left-1 -right-1 sm:-left-1.5 sm:-right-1.5 border-t-2 border-dashed border-ink/30 z-10 pointer-events-none" style="bottom:${(m.budget / scaleMax) * 100}%"></div>
+      <div class="bar-grow group relative w-full rounded-t-md ${m.over ? 'bg-berry' : 'bg-mint'} ${m.isNow ? 'opacity-50' : ''} hover:opacity-80 transition-opacity"
+           style="height:${Math.max((m.total / scaleMax) * 100, 1.5)}%; animation-delay:${(i * 0.05).toFixed(2)}s">
+        <div class="pointer-events-none absolute -top-9 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 bg-ink text-cream text-[11px] font-bold py-1 px-2 rounded-md whitespace-nowrap z-20 transition-opacity">
+          ${formatKRWFull(m.total)} / ${formatKRW(m.budget)}
+        </div>
       </div>
-      ${html}
+    </div>`).join('');
+
+  const labels = months.map(m => `
+    <span class="flex-1 min-w-0 text-[10px] font-bold text-center leading-tight ${m.isNow ? 'text-ink' : 'text-ink-soft'}">${getMonthLabel(m.records[0]?.date)}${m.gen !== '미정' ? `<br/><span class="font-semibold opacity-70">${m.gen}</span>` : ''}</span>`).join('');
+
+  chart.innerHTML = `
+    <div class="h-full flex flex-col">
+      <div class="relative flex-1 flex gap-1.5 sm:gap-3 border-b border-line">${bars}</div>
+      <div class="flex gap-1.5 sm:gap-3 mt-2">${labels}</div>
     </div>
   `;
 }
 
-// ── Category Pie ───────────────────────────────────────
-const CAT_COLORS = {
-  '정기구독(스낵24)': '#2d8a4e', '음료': '#d4a017', '과자/스낵': '#e67e22',
-  '과일': '#27ae60', '유제품/건강': '#8e7cc3', '계절간식': '#e67e22',
-  '식사/간편식': '#bdc3c7', '혼합주문': '#95a5a6', '기타': '#7f8c8d',
-};
-
-function renderCategoryPie() {
-  const period = document.getElementById('cat-period').value;
-  let records = officeSnacks;
-  if (period === 'current') {
-    const { start, end } = getMonthRange(new Date());
-    records = officeSnacks.filter(r => r.date >= start && r.date <= end);
-  } else if (period === 'last') {
-    const prev = new Date(); prev.setMonth(prev.getMonth() - 1);
-    const { start, end } = getMonthRange(prev);
-    records = officeSnacks.filter(r => r.date >= start && r.date <= end);
-  } else if (period !== 'all') {
-    const cutoff = new Date(); cutoff.setMonth(cutoff.getMonth() - parseInt(period));
-    records = officeSnacks.filter(r => r.date >= cutoff.toISOString().substring(0, 10));
-  }
-
-  const categories = groupByCategoryDetected(records);
-  const sorted = Object.entries(categories).sort((a, b) => b[1].total - a[1].total);
-  const total = records.reduce((s, r) => s + r.price, 0);
-
-  if (total === 0) { document.getElementById('cat-pie-total').textContent = '₩0'; return; }
-  document.getElementById('cat-pie-total').textContent = formatKRW(total);
-
-  const radius = 40, circumference = 2 * Math.PI * radius;
-  let offset = 0, circles = '';
-  sorted.forEach(([name, data]) => {
-    const pct = data.total / total;
-    const dashLen = pct * circumference + 0.3;
-    const color = CAT_COLORS[name] || '#95a5a6';
-    circles += `<circle cx="50" cy="50" fill="transparent" r="${radius}" stroke="${color}" stroke-width="12" stroke-linecap="butt" stroke-dasharray="${dashLen.toFixed(2)} ${Math.max(0, circumference - dashLen).toFixed(2)}" stroke-dashoffset="${(-offset).toFixed(2)}"/>`;
-    offset += pct * circumference;
-  });
-  document.getElementById('cat-pie').innerHTML = circles;
-
-  // Legend — top 6, merge remaining into existing "기타" or add new
-  const topCats = sorted.slice(0, 6);
-  const rest = sorted.slice(6);
-  if (rest.length > 0) {
-    const restTotal = rest.reduce((s, [,d]) => s + d.total, 0);
-    const existingEtc = topCats.findIndex(([n]) => n === '기타');
-    if (existingEtc >= 0) {
-      topCats[existingEtc][1] = { total: topCats[existingEtc][1].total + restTotal };
-    } else {
-      topCats.push(['기타', { total: restTotal }]);
-    }
-  }
-
-  document.getElementById('cat-pie-legend').innerHTML = topCats.map(([name, data]) => {
-    const pct = Math.round((data.total / total) * 100);
-    const color = CAT_COLORS[name] || '#7f8c8d';
-    return `<div class="flex items-center justify-between"><div class="flex items-center gap-2"><div class="w-2 h-2 rounded-full shrink-0" style="background:${color}"></div><span class="text-sm font-medium">${name}</span></div><div class="text-right"><span class="text-sm font-bold">${pct}%</span> <span class="text-[10px] text-on-surface-variant">${formatKRW(data.total)}</span></div></div>`;
-  }).join('');
-}
-
 // ── Quick Stats ────────────────────────────────────────
 function renderQuickStats() {
-  const now = new Date();
-  const { start, end } = getMonthRange(now);
-  const thisMonth = officeSnacks.filter(r => r.date >= start && r.date <= end);
-  const count = thisMonth.length;
+  const thisMonth = thisMonthSnacks();
   const total = thisMonth.reduce((s, r) => s + r.price, 0);
-  const avg = count > 0 ? Math.round(total / count) : 0;
-  document.getElementById('stat-orders').textContent = count;
-  document.getElementById('stat-avg').textContent = formatKRWFull(avg);
+  const prev = new Date(); prev.setDate(1); prev.setMonth(prev.getMonth() - 1);
+  const { start, end } = getMonthRange(prev);
+  const lastTotal = officeSnacks.filter(r => r.date >= start && r.date <= end).reduce((s, r) => s + r.price, 0);
+
+  countUp(document.getElementById('stat-orders'), thisMonth.length, String, 700);
+  countUp(document.getElementById('stat-avg'), thisMonth.length ? Math.round(total / thisMonth.length) : 0, formatKRWFull);
+  countUp(document.getElementById('stat-last'), lastTotal, formatKRWFull);
+}
+
+// ── Item frequency helper ──────────────────────────────
+function itemKeys(record) {
+  return record.name.split(',').map(s => s.trim()).filter(s => s && !SKIP_ITEM.test(s))
+    .map(item => normalizeItemName(item.replace(/\s+/g, ' ').substring(0, 20)))
+    .filter(key => key.length >= 2);
 }
 
 // ── Popular Items ──────────────────────────────────────
 function renderPopularItems() {
   const freq = {};
-  officeSnacks.forEach(r => {
-    const items = r.name.split(',').map(s => s.trim()).filter(s => s && !s.match(/스낵24|대량|주문|구매|추가|정산|이용|이것저것/));
-    items.forEach(item => {
-      const key = normalizeItemName(item.replace(/\s+/g, ' ').substring(0, 20));
-      if (key.length < 2) return;
-      freq[key] = (freq[key] || 0) + 1;
-    });
-  });
+  officeSnacks.forEach(r => itemKeys(r).forEach(k => { freq[k] = (freq[k] || 0) + 1; }));
   const top = Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  const max = top[0]?.[1] || 1;
 
-  document.getElementById('popular-list').innerHTML = top.map(([name, count], i) => {
-    const medals = ['🥇', '🥈', '🥉', '4.', '5.'];
-    const displayName = name.length > 12 ? name.substring(0, 12) + '...' : name;
-    return `<div class="flex items-center justify-between"><div class="flex items-center gap-2"><span class="text-xs w-5">${medals[i]}</span><span class="text-sm font-medium">${displayName}</span></div><span class="text-[10px] text-on-surface-variant font-bold">${count}x</span></div>`;
-  }).join('');
+  document.getElementById('popular-list').innerHTML = top.map(([name, count], i) => `
+    <div class="flex items-center gap-3">
+      <span class="w-4 text-xs font-bold ${i === 0 ? 'text-mint' : 'text-ink-soft'}">${i + 1}</span>
+      <div class="flex-1 min-w-0">
+        <div class="flex justify-between gap-2">
+          <span class="text-sm font-bold truncate">${esc(name)}</span>
+          <span class="text-xs font-bold text-ink-soft shrink-0">${count}×</span>
+        </div>
+        <div class="bar-track h-1.5 mt-1.5"><div class="h-full rounded-full ${i === 0 ? 'bg-mint' : 'bg-mint/50'}" style="width:${(count / max) * 100}%"></div></div>
+      </div>
+    </div>`).join('') || '<p class="text-sm text-ink-soft">No data yet</p>';
 }
 
 // ── Restock Reminder ───────────────────────────────────
 function renderRestockReminder() {
   const now = new Date();
-  const twoWeeksAgo = new Date(now - 14 * 24 * 60 * 60 * 1000).toISOString().substring(0, 10);
+  const twoWeeksAgo = new Date(now - 14 * 864e5).toISOString().substring(0, 10);
+  const totalCount = {}, lastSeen = {}, recent = new Set();
 
-  // Count total occurrences of each item across ALL records
-  const totalCount = {};
-  const lastSeen = {};
-  const recentItems = new Set();
-
-  officeSnacks.forEach(r => {
-    const items = r.name.split(',').map(s => s.trim()).filter(s => s && !s.match(/스낵24|대량|주문|구매|추가|정산|이용|이것저것/));
-    items.forEach(item => {
-      const key = normalizeItemName(item.replace(/\s+/g, ' ').substring(0, 20));
-      if (key.length < 2) return;
-      totalCount[key] = (totalCount[key] || 0) + 1;
-      if (!lastSeen[key] || r.date > lastSeen[key]) lastSeen[key] = r.date;
-      if (r.date >= twoWeeksAgo) recentItems.add(key);
-    });
-  });
+  officeSnacks.forEach(r => itemKeys(r).forEach(k => {
+    totalCount[k] = (totalCount[k] || 0) + 1;
+    if (!lastSeen[k] || r.date > lastSeen[k]) lastSeen[k] = r.date;
+    if (r.date >= twoWeeksAgo) recent.add(k);
+  }));
 
   // Only items ordered 3+ times AND not ordered in last 2 weeks
   const needRestock = Object.entries(lastSeen)
-    .filter(([key]) => !recentItems.has(key) && (totalCount[key] || 0) >= 3)
+    .filter(([k]) => !recent.has(k) && totalCount[k] >= 3)
     .sort((a, b) => b[1].localeCompare(a[1]))
     .slice(0, 5);
 
+  const el = document.getElementById('restock-list');
   if (needRestock.length === 0) {
-    document.getElementById('restock-list').innerHTML = '<p class="text-xs text-on-surface-variant">All stocked up! No items overdue.</p>';
+    el.innerHTML = '<p class="text-sm text-ink-soft py-6 text-center">All stocked up.</p>';
     return;
   }
-
-  document.getElementById('restock-list').innerHTML = needRestock.map(([name, lastDate]) => {
-    const daysAgo = Math.round((now - new Date(lastDate)) / (24 * 60 * 60 * 1000));
-    return `<div class="flex items-center justify-between"><span class="text-xs font-medium">${name}</span><span class="text-[10px] text-tertiary font-bold">${daysAgo}d ago</span></div>`;
+  el.innerHTML = needRestock.map(([name, lastDate]) => {
+    const daysAgo = Math.round((now - new Date(lastDate)) / 864e5);
+    return `<div class="flex items-center justify-between gap-2 py-2.5">
+      <span class="text-sm font-bold truncate">${esc(name)}</span>
+      <span class="text-xs font-bold shrink-0 ${daysAgo > 45 ? 'text-berry' : 'text-mango-ink'}">${daysAgo}d ago</span>
+    </div>`;
   }).join('');
 }
 
 // ── Recent Purchases ───────────────────────────────────
 function renderRecentList() {
-  const recent = allRecords.slice(0, 5);
-  const icons = { 'Office Snacks': 'shopping_bag', 'Bi-weekly': 'restaurant', 'Happy Hour': 'local_bar', 'Other Events': 'celebration' };
-
-  document.getElementById('recent-list').innerHTML = recent.map(r => {
-    const icon = icons[r.event] || 'receipt_long';
-    return `<div class="flex items-center gap-3"><div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0"><span class="material-symbols-outlined text-sm">${icon}</span></div><div class="flex-1 min-w-0"><p class="text-xs font-bold truncate">${r.name}</p><p class="text-[10px] text-on-surface-variant">${formatDate(r.date)}</p></div><span class="text-[10px] font-bold text-on-surface-variant shrink-0">${formatKRWFull(r.price)}</span></div>`;
-  }).join('');
+  document.getElementById('recent-list').innerHTML = allRecords.slice(0, 5).map(r => `
+    <div class="flex items-center gap-3 py-2.5">
+      <span class="dot bg-${eventColor(r.event)}"></span>
+      <div class="flex-1 min-w-0">
+        <p class="text-sm font-bold truncate">${esc(r.name)}</p>
+        <p class="text-[11px] text-ink-soft">${formatDate(r.date)}</p>
+      </div>
+      <span class="text-xs font-bold shrink-0">${formatKRWFull(r.price)}</span>
+    </div>`).join('');
 }
 
 // ── Purchase History ───────────────────────────────────
-function renderHistoryTable(filterText = '', filterEvent = '') {
-  let filtered = allRecords;
-  if (filterText) { const q = filterText.toLowerCase(); filtered = filtered.filter(r => r.name.toLowerCase().includes(q) || r.vendor.toLowerCase().includes(q)); }
-  if (filterEvent) filtered = filtered.filter(r => r.event === filterEvent);
+function renderHistoryTable() {
+  const q = document.getElementById('search-input').value.trim().toLowerCase();
+  let rows = allRecords;
+  if (q) rows = rows.filter(r => r.name.toLowerCase().includes(q) || r.vendor.toLowerCase().includes(q));
+  if (historyEvent) rows = rows.filter(r => r.event === historyEvent);
 
-  if (filtered.length === 0) { document.getElementById('history-table').innerHTML = '<p class="text-on-surface-variant text-xs py-4">No matching records</p>'; return; }
+  const el = document.getElementById('history-table');
+  if (rows.length === 0) { el.innerHTML = '<p class="text-sm text-ink-soft py-10 text-center">No matching purchases</p>'; return; }
 
-  const eventColors = { 'Office Snacks': 'primary', 'Bi-weekly': 'secondary', 'Happy Hour': 'tertiary' };
-  document.getElementById('history-table').innerHTML = `
-    <table class="w-full"><thead><tr class="text-left text-[9px] uppercase tracking-widest text-on-surface-variant font-bold">
-      <th class="pb-3 pr-3">Date</th><th class="pb-3 pr-3">Item</th><th class="pb-3 pr-3 text-right">Price</th><th class="pb-3 pr-3">Event</th><th class="pb-3">Vendor</th>
-    </tr></thead><tbody>${filtered.map(r => {
-      const c = eventColors[r.event] || 'outline';
-      return `<tr class="border-t border-outline-variant/10 hover:bg-surface-container-low/50"><td class="py-2.5 pr-3 text-xs text-on-surface-variant whitespace-nowrap">${formatDate(r.date)}</td><td class="py-2.5 pr-3 text-xs font-medium max-w-[200px] truncate">${r.name}</td><td class="py-2.5 pr-3 text-xs font-bold text-right whitespace-nowrap">${formatKRWFull(r.price)}</td><td class="py-2.5 pr-3"><span class="text-[9px] font-bold py-0.5 px-2 bg-${c}/10 text-${c} rounded-full">${r.event}</span></td><td class="py-2.5 text-xs text-on-surface-variant">${r.vendor}</td></tr>`;
-    }).join('')}</tbody></table>`;
+  el.innerHTML = `
+    <table class="w-full text-sm">
+      <thead class="sticky top-0 bg-cream z-10"><tr class="text-left eyebrow">
+        <th class="py-3 px-4">Date</th><th class="py-3 px-4">Item</th><th class="py-3 px-4 text-right">Price</th><th class="py-3 px-4">Event</th><th class="py-3 px-4">Vendor</th>
+      </tr></thead>
+      <tbody>${rows.map(r => `
+        <tr class="border-t border-line hover:bg-cream">
+          <td class="py-2.5 px-4 text-xs text-ink-soft whitespace-nowrap">${formatDate(r.date)}</td>
+          <td class="py-2.5 px-4 font-semibold max-w-[260px] truncate" title="${esc(r.name)}">${esc(r.name)}</td>
+          <td class="py-2.5 px-4 font-bold text-right whitespace-nowrap">${formatKRWFull(r.price)}</td>
+          <td class="py-2.5 px-4 whitespace-nowrap"><span class="inline-flex items-center gap-1.5 text-xs font-semibold"><span class="dot bg-${eventColor(r.event)}"></span>${esc(r.event || '-')}</span></td>
+          <td class="py-2.5 px-4 text-xs text-ink-soft whitespace-nowrap">${esc(r.vendor)}</td>
+        </tr>`).join('')}</tbody>
+    </table>`;
 }
 
 // ── Events ─────────────────────────────────────────────
-document.getElementById('search-input').addEventListener('input', (e) => renderHistoryTable(e.target.value, document.getElementById('event-filter').value));
-document.getElementById('event-filter').addEventListener('change', (e) => renderHistoryTable(document.getElementById('search-input').value, e.target.value));
+document.getElementById('search-input').addEventListener('input', renderHistoryTable);
+document.getElementById('event-chips').addEventListener('click', (e) => {
+  const chip = e.target.closest('[data-event]');
+  if (!chip) return;
+  historyEvent = chip.dataset.event;
+  document.querySelectorAll('#event-chips .chip').forEach(c => c.classList.toggle('active', c === chip));
+  renderHistoryTable();
+});
 
 // ── Snack Request Form ─────────────────────────────────
 document.getElementById('snack-request-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const status = document.getElementById('req-status');
   const btn = e.target.querySelector('button[type="submit"]');
+  const label = btn.textContent;
   const name = document.getElementById('req-name').value.trim();
   const snack = document.getElementById('req-snack').value.trim();
   const link = document.getElementById('req-link').value.trim();
@@ -576,23 +483,22 @@ document.getElementById('snack-request-form').addEventListener('submit', async (
       body: JSON.stringify({ name, snack, link }),
     });
     const data = await res.json();
-
     if (data.ok) {
-      status.className = 'text-xs text-center py-2 rounded-lg font-headline bg-secondary/10 text-secondary';
-      status.textContent = 'Sent to #happy-nyam-nyam!';
+      status.className = 'text-sm font-bold text-center py-2 rounded-xl bg-mint-soft text-ink';
+      status.textContent = 'Sent to #happy-nyam-nyam';
       e.target.reset();
     } else {
-      status.className = 'text-xs text-center py-2 rounded-lg font-headline bg-error/10 text-error';
+      status.className = 'text-sm font-bold text-center py-2 rounded-xl bg-berry-soft text-berry';
       status.textContent = data.error || 'Failed to send';
     }
   } catch (err) {
-    status.className = 'text-xs text-center py-2 rounded-lg font-headline bg-error/10 text-error';
+    status.className = 'text-sm font-bold text-center py-2 rounded-xl bg-berry-soft text-berry';
     status.textContent = 'Network error';
   }
 
   status.classList.remove('hidden');
   btn.disabled = false;
-  btn.textContent = 'Send to #happy-nyam-nyam';
+  btn.textContent = label;
   setTimeout(() => status.classList.add('hidden'), 5000);
 });
 

@@ -2,9 +2,19 @@
   "buildCommand": null,
   "outputDirectory": null,
   "rewrites": [
-    { "source": "/api/snacks", "destination": "/api/snacks" }
+    {
+      "source": "/api/snacks",
+      "destination": "/api/snacks"
+    }
   ],
   "crons": [
-    { "path": "/api/restock", "schedule": "0 0 * * 1" }
+    {
+      "path": "/api/restock",
+      "schedule": "0 0 * * 1"
+    },
+    {
+      "path": "/api/recap",
+      "schedule": "0 1 * * 1,5"
+    }
   ]
 }

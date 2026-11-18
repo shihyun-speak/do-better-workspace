@@ -16,7 +16,7 @@ export default async function handler(req, res) {
   try {
     const linkLine = link ? `\n🔗 <${link}|Purchase Link>` : '';
     const slackBody = {
-      text: `🍿 *New Snack Request!*\n\n*Requested by:* ${name}\n*Snack:* ${snack}${linkLine}\n\n_via <https://14-snack-dashboard.vercel.app|Happy Nyam Nyam Dashboard>_`
+      text: `🍿 *New Snack Request!*\n\n*Requested by:* ${name}\n*Snack:* ${snack}${linkLine}\n\n_via <https://happy-nyam-nyam.vercel.app|Happy Nyam Nyam Dashboard>_`
     };
 
     const slackRes = await fetch(SLACK_WEBHOOK, {

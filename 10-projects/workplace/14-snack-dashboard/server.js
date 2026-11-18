@@ -1,6 +1,14 @@
 const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
+const { pathToFileURL } = require('node:url');
+
+const API_ROUTES = {
+  '/api/log': 'api/log.js',
+  '/api/ramp': 'api/ramp.js',
+  '/api/parse-receipt': 'api/parse-receipt.js',
+  '/api/recap': 'api/recap.js',
+};
 
 const PORT = process.env.PORT || 3000;
 const NOTION_TOKEN = process.env.NOTION_TOKEN;
@@ -118,7 +126,7 @@ const server = http.createServer(async (req, res) => {
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-log-passcode');
 
   if (req.method === 'OPTIONS') {
     res.writeHead(204);
@@ -154,7 +162,7 @@ const server = http.createServer(async (req, res) => {
 
       const linkLine = link ? `\n🔗 <${link}|Purchase Link>` : '';
       const slackBody = {
-        text: `🍿 *New Snack Request!*\n\n*Requested by:* ${name}\n*Snack:* ${snack}${linkLine}\n\n_via <https://14-snack-dashboard.vercel.app|Happy Nyam Nyam Dashboard>_`
+        text: `🍿 *New Snack Request!*\n\n*Requested by:* ${name}\n*Snack:* ${snack}${linkLine}\n\n_via <https://happy-nyam-nyam.vercel.app|Happy Nyam Nyam Dashboard>_`
       };
 
       const slackRes = await fetch(SLACK_WEBHOOK, {
@@ -182,8 +190,26 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    // API: "To log" routes reuse the Vercel handlers in api/ so local and prod behave the same
+    const route = API_ROUTES[req.url.split('?')[0]];
+    if (route) {
+      const mod = await import(pathToFileURL(path.join(__dirname, route)).href);
+      req.body = req.method === 'POST' ? await readBody(req) : {};
+      const vres = {
+        status(code) { res.statusCode = code; return vres; },
+        json(obj) {
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify(obj));
+          if (req.method === 'POST' && res.statusCode < 300) cache.clear(); // new rows show up on the dashboard right away
+        },
+        setHeader: (k, v) => res.setHeader(k, v),
+      };
+      await mod.default(req, vres);
+      return;
+    }
+
     // Static files
-    let filePath = req.url === '/' ? '/index.html' : req.url;
+    let filePath = req.url === '/' ? '/index.html' : req.url.split('?')[0];
     filePath = path.join(__dirname, decodeURIComponent(filePath));
 
     // Security: prevent directory traversal
