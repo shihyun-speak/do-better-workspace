@@ -5,6 +5,29 @@
 
 ---
 
+## Start here (as of 2026-11-18, commit fc43976)
+
+**Live:** dashboard (coin jar hero, Fresh green theme), Analytics, To log page (passcode `LOG_PASSCODE` in `.env` / Vercel prod). Shihyun is already saving receipts through To log (30 Office Snacks orders logged for Nov on 11/18).
+
+**Deploy:** `vercel deploy --prod --yes` from this folder (CLI deploy, not git). `.vercelignore` keeps md/prototypes/server.js/scripts off the public site.
+
+**Scheduled (Vercel Cron, 2 of 2 Hobby slots used):**
+- `/api/restock` Mon 09:00 KST, weekly restock reminder
+- `/api/recap` Mon + Fri 10:00 KST: 4th Monday reminder (tags Shihyun, "🧾 Log your receipts" button), Friday recap card ("<Month> Snack Recap: Budget Safe! 🟢", Most popular / New this month, "📊 See dashboard"). First posts: Mon 11/23, Fri 11/27
+- Preview: `/api/recap?dry=1&kind=reminder|recap`. Test DMs go via the Bloop bot (`BLOOP_SLACK_BOT_TOKEN`, DM channel `D0CEXB1GD4K`); the nyam bot only has the channel webhook
+
+**Open items**
+- [ ] Jan 1 2027 recap (for December) lands on New Year's Day: leave or move to next workday? (asked, no answer yet)
+- [ ] Tune the "Paste order text" parser with a real copied Coupang / Naver order page (built on a made-up sample)
+- [ ] Unused Ramp code (`api/ramp.js`, Ramp bits in `_lib.js` / `log.js`): Shihyun said no Ramp; remove when she OKs
+- [ ] Optional: `ANTHROPIC_API_KEY` in Vercel to auto-read dropped receipts (Haiku, ~₩1/receipt). Without it, manual entry next to the big receipt picture
+- [ ] Possible next: give Most ordered / Running low / Recent purchases the same playful treatment as the jar (offered, not requested)
+- [ ] Typo in Notion: "오이오차 녹찿" shows up as a new item
+
+**Shihyun's preferences from this session:** design changes deploy straight to prod and she reviews live; Slack posts in English, short, no won amounts (budget mood only); Slack card layout with emoji on buttons, no long dividers; she likes playful visuals (coin jar) over plain boxes.
+
+---
+
 ## Completed
 
 ### Infrastructure
