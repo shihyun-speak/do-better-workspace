@@ -5,7 +5,6 @@ const { pathToFileURL } = require('node:url');
 
 const API_ROUTES = {
   '/api/log': 'api/log.js',
-  '/api/ramp': 'api/ramp.js',
   '/api/parse-receipt': 'api/parse-receipt.js',
   '/api/recap': 'api/recap.js',
 };

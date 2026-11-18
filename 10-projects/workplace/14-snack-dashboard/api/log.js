@@ -1,6 +1,6 @@
 // GET  /api/log           -> passcode check + form options (vendors, events) from the Notion schema
 // POST /api/log           -> write one purchase (several items) to the snack DB, one row per item
-import { checkPasscode, notion, queryAll, RAMP_TAG } from './_lib.js';
+import { checkPasscode, notion, queryAll } from './_lib.js';
 
 export default async function handler(req, res) {
   if (!checkPasscode(req, res)) return;
@@ -14,14 +14,13 @@ export default async function handler(req, res) {
         ok: true,
         vendors: (p['구매처']?.select?.options || []).map(o => o.name),
         events: (p['Event']?.multi_select?.options || []).map(o => o.name),
-        ramp: Boolean(process.env.RAMP_CLIENT_ID && process.env.RAMP_CLIENT_SECRET),
         ai: Boolean(process.env.ANTHROPIC_API_KEY),
       });
     }
 
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-    const { date, vendor, event, items, rampId, buyer, note, force } = req.body || {};
+    const { date, vendor, event, items, note, force } = req.body || {};
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date || '')) return res.status(400).json({ error: 'date must be YYYY-MM-DD' });
     if (!vendor) return res.status(400).json({ error: 'vendor is required' });
     if (!event) return res.status(400).json({ error: 'event is required' });
@@ -40,7 +39,7 @@ export default async function handler(req, res) {
       if (duplicates.length) return res.status(409).json({ error: 'Possible duplicates', duplicates });
     }
 
-    const memo = [rampId ? `${RAMP_TAG}${rampId}` : '', buyer || '', note || ''].filter(Boolean).join(' / ');
+    const memo = note || '';
 
     const created = [];
     for (const item of clean) {

@@ -3,7 +3,6 @@ import { timingSafeEqual } from 'node:crypto';
 
 export const NOTION_API = 'https://api.notion.com/v1';
 export const NOTION_VERSION = '2022-06-28';
-export const RAMP_TAG = 'Ramp:'; // prefix written into 비고 so a Ramp charge is never logged twice
 
 // ── Auth ────────────────────────────────────────────────
 // The page sends the passcode in the x-log-passcode header. Every write/read of card data checks it.
@@ -53,17 +52,3 @@ export async function queryAll(dbId, filter) {
   return rows;
 }
 
-// Ramp transaction IDs already written to the snack DB (found in 비고).
-export async function loggedRampIds() {
-  const rows = await queryAll(process.env.NOTION_SNACK_DB_ID, {
-    property: '비고',
-    rich_text: { contains: RAMP_TAG },
-  });
-  const ids = new Set();
-  for (const r of rows) {
-    const note = (r.properties['비고']?.rich_text || []).map(t => t.plain_text).join('');
-    const m = note.match(/Ramp:([A-Za-z0-9-]+)/);
-    if (m) ids.add(m[1]);
-  }
-  return ids;
-}
