@@ -5,9 +5,9 @@
 
 ---
 
-## Start here (as of 2026-11-18, commit fc43976)
+## Start here (as of 2026-11-18, latest commit 52e18e0)
 
-**Live:** dashboard (coin jar hero, Fresh green theme), Analytics, To log page (passcode `LOG_PASSCODE` in `.env` / Vercel prod). Shihyun is already saving receipts through To log (30 Office Snacks orders logged for Nov on 11/18).
+**Live:** dashboard (coin jar hero, Fresh green theme, Notion button), Analytics (real categories with top items, live generations), To log page (passcode `LOG_PASSCODE` in `.env` / Vercel prod). Shihyun is already saving receipts through To log (30 Office Snacks orders logged for Nov on 11/18).
 
 **Deploy:** `vercel deploy --prod --yes` from this folder (CLI deploy, not git). `.vercelignore` keeps md/prototypes/server.js/scripts off the public site.
 
@@ -16,9 +16,12 @@
 - `/api/recap` Mon + Fri 10:00 KST: 4th Monday reminder (tags Shihyun, "🧾 Log your receipts" button), Friday recap card ("<Month> Snack Recap: Budget Safe! 🟢", Most popular / New this month, "📊 See dashboard"). First posts: Mon 11/23, Fri 11/27
 - Preview: `/api/recap?dry=1&kind=reminder|recap`. Test DMs go via the Bloop bot (`BLOOP_SLACK_BOT_TOKEN`, DM channel `D0CEXB1GD4K`); the nyam bot only has the channel webhook
 
+**Data sources:** purchases = Notion DB `구매 내역` (e7afe728...); generations = Notion 쩝쩝박사 페이지 (127792ec..., toggles "N대 쩝쩝박사" with 월 예산 / 시작일 / 종료일), both via the Snack Claude integration. Categories = keyword rules in `shared.js` CATEGORY_RULES (add new snack names there when one lands in the wrong slice; 셀렉션 = ice cream).
+
 **Open items**
 - [ ] Jan 1 2027 recap (for December) lands on New Year's Day: leave or move to next workday? (asked, no answer yet)
 - [ ] Tune the "Paste order text" parser with a real copied Coupang / Naver order page (built on a made-up sample)
+- [x] Category breakdown rebuilt (기타 39% -> 0%) and generations read live from Notion (9대, 10대 picked up)
 - [x] Ramp code removed 2026-11-18 (api/ramp.js deleted, Ramp bits stripped from _lib.js / log.js / server.js)
 - [ ] Optional: `ANTHROPIC_API_KEY` in Vercel to auto-read dropped receipts (Haiku, ~₩1/receipt). Without it, manual entry next to the big receipt picture
 - [ ] Possible next: give Most ordered / Running low / Recent purchases the same playful treatment as the jar (offered, not requested)
