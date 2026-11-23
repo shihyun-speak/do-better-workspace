@@ -6,6 +6,7 @@ import type { StepState } from "@/lib/steps";
 import { canonicalName, formatCountry } from "@/lib/owners";
 import { parseDate, workingDaysUntil } from "@/lib/dates";
 import { inRegion, type Region } from "@/lib/regions";
+import { rateWithCurrency } from "@/lib/rates";
 import DateCalendar, { type CalEvent } from "./DateCalendar";
 import {
   CHANGED_CHOICE,
@@ -83,7 +84,8 @@ function fieldsFor(r: RequestEntry): [string, string][] {
   if (r.source === "onboarding") {
     add("Role", [r.jobTitle, r.department].filter(Boolean).join(", "));
     add("Start", fmt(r.startDate, true));
-    add("Rate", r.paymentRate);
+    add("Preferred name", r.preferredName);
+    add("Rate", rateWithCurrency(r.paymentRate, r.paymentCurrency, r.paymentCadence));
     add("Scope", r.scopeOfWork);
     // Hemmi (2026-11-04): country of residence, with state for US ("US, California").
     add("Country of residence", formatCountry(r.country));

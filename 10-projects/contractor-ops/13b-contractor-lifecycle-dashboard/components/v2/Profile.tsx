@@ -9,6 +9,7 @@ import { parseDate, workingDaysUntil } from "@/lib/dates";
 import { PLANS, requestKey, stepsFor } from "@/lib/plans";
 import { STATUS_OPTIONS, sotSideEffect, sotStatusSideEffect } from "@/lib/statuses";
 import StatusSelect from "./StatusSelect";
+import { rateWithCurrency } from "@/lib/rates";
 
 // Contractor profile: SoT contract facts + every answer from every form
 // they've submitted (from "Form Responses", all four request types),
@@ -23,7 +24,7 @@ function fmt(iso: string | null | undefined): string {
 function summary(r: RequestEntry): [string, string][] {
   const rows: [string, string | null | undefined][] =
     r.source === "onboarding"
-      ? [["Email", r.email], ["Role", [r.jobTitle, r.department].filter(Boolean).join(", ")], ["Contract", `${fmt(r.startDate)} → ${fmt(r.endDate)}`], ["Payment", [r.paymentRate, r.paymentType].filter(Boolean).join(", ")], ["Scope of work", r.scopeOfWork], ["Tools", r.saasTools]]
+      ? [["Email", r.email], ["Role", [r.jobTitle, r.department].filter(Boolean).join(", ")], ["Contract", `${fmt(r.startDate)} → ${fmt(r.endDate)}`], ["Payment", [rateWithCurrency(r.paymentRate, r.paymentCurrency, r.paymentCadence), r.paymentType].filter(Boolean).join(", ")], ["Scope of work", r.scopeOfWork], ["Tools", r.saasTools]]
       : r.source === "extension"
         ? [["New end date", fmt(r.newEndDate)], ["Scope / rate changed", r.scopeOrRateChanged]]
         : r.source === "offboarding"

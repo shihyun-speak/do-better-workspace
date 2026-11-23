@@ -8,6 +8,7 @@ import type { Owner } from "@/lib/owners";
 import { canonicalName, formatCountry, ownerLabel } from "@/lib/owners";
 import { fmtDate, fmtDateShort, workingDaysUntil } from "@/lib/dates";
 import ActivityLog from "@/components/ActivityLog";
+import { rateWithCurrency } from "@/lib/rates";
 
 type TabKey =
   | "sot"
@@ -676,8 +677,12 @@ function isMeaningfulText(v: string | undefined | null): v is string {
 function formatPaymentRate(
   rate: string | undefined,
   paymentType?: string,
+  currency?: string,
+  cadence?: string,
 ): string | undefined {
   if (!rate || !rate.trim()) return undefined;
+  // Newer form rows give currency / cadence as their own answers.
+  if (currency || cadence) return rateWithCurrency(rate, currency, cadence);
   let display = rate.trim();
   const hasCurrency = /[$€£¥₩]/.test(display);
   const isBareNumber = /^[\d,]+(\.\d+)?$/.test(display);
@@ -709,7 +714,7 @@ function getExtraDefsFor(tab: TabKey): ExtraDef[] {
   if (tab === "onboarding") {
     return [
       { key: "scope", label: "Scope", pick: (r) => r.scopeOfWork },
-      { key: "paymentRate", label: "Payment rate", pick: (r) => formatPaymentRate(r.paymentRate, r.paymentType) },
+      { key: "paymentRate", label: "Payment rate", pick: (r) => formatPaymentRate(r.paymentRate, r.paymentType, r.paymentCurrency, r.paymentCadence) },
       { key: "workingLocation", label: "Working location", pick: (r) => r.workingLocation },
       { key: "saasTools", label: "SaaS tools", pick: (r) => r.saasTools },
     ];
@@ -717,7 +722,7 @@ function getExtraDefsFor(tab: TabKey): ExtraDef[] {
   if (tab === "extension") {
     return [
       { key: "scope", label: "Scope", pick: (r) => r.scopeOfWork },
-      { key: "paymentRate", label: "Payment rate", pick: (r) => formatPaymentRate(r.paymentRate, r.paymentType) },
+      { key: "paymentRate", label: "Payment rate", pick: (r) => formatPaymentRate(r.paymentRate, r.paymentType, r.paymentCurrency, r.paymentCadence) },
       { key: "scopeOrRateChanged", label: "Scope/rate changed?", pick: (r) => r.scopeOrRateChanged },
     ];
   }

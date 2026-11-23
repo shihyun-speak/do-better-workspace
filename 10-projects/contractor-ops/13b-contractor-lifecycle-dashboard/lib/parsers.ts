@@ -72,6 +72,12 @@ export type RequestEntry = {
   scopeOfWork?: string;
   paymentType?: string;
   paymentRate?: string;
+  /** From the form's "Payment Currency" question, e.g. "KRW - South Korean Won". */
+  paymentCurrency?: string;
+  /** From the form's "Payment Cadence" question (Fixed contracts only). */
+  paymentCadence?: string;
+  /** From the form's preferred-name question, if answered. */
+  preferredName?: string;
   maxWeeklyHours?: string;
   saasTools?: string;
   workingLocation?: string;
@@ -301,6 +307,7 @@ export async function loadOnboarding(
   sot: SotEntry[],
   countries: Map<string, string>,
   requestTimestamps?: Map<string, string[]>,
+  formExtras?: Map<string, FormExtras>,
 ): Promise<RequestEntry[]> {
   const rows = await readRange("Onboarding!A:R");
   if (rows.length < 2) return [];
@@ -337,6 +344,7 @@ export async function loadOnboarding(
       scopeOfWork: (row[9] || "").trim(),
       paymentType: (row[10] || "").trim(),
       paymentRate: (row[11] || "").trim(),
+      ...formExtras?.get(canonicalName(name)),
       maxWeeklyHours: (row[12] || "").trim(),
       saasTools: (row[15] || "").trim(),
       workingLocation: (row[16] || "").trim(),
@@ -349,6 +357,7 @@ export async function loadExtension(
   sot: SotEntry[],
   countries: Map<string, string>,
   requestTimestamps?: Map<string, string[]>,
+  formExtras?: Map<string, FormExtras>,
 ): Promise<RequestEntry[]> {
   const rows = await readRange("Extension!A:F");
   if (rows.length < 2) return [];
@@ -390,6 +399,8 @@ export async function loadExtension(
       jobTitle: sotJobTitleByName.get(key) || onbDetails?.jobTitle,
       scopeOfWork: onbDetails?.scopeOfWork,
       paymentRate: onbDetails?.paymentRate,
+      paymentCurrency: formExtras?.get(key)?.paymentCurrency,
+      paymentCadence: formExtras?.get(key)?.paymentCadence,
       scopeOrRateChanged: (row[5] || "").trim(),
     });
   }
@@ -544,15 +555,60 @@ export type DashboardData = {
   rateChange: RequestEntry[];
 };
 
+export type FormExtras = {
+  paymentCurrency?: string;
+  paymentCadence?: string;
+  preferredName?: string;
+};
+
+/**
+ * Newer form questions (Payment Currency, Payment Cadence, preferred name)
+ * that the Onboarding tab's FILTER doesn't copy over. Google appends new
+ * questions as columns at the far right of Form Responses, so these are found
+ * by header text, not position. Keyed by canonical contractor name; the
+ * latest onboarding submission wins. Missing columns just mean an empty map.
+ */
+export async function loadOnboardingFormExtras(): Promise<Map<string, FormExtras>> {
+  const out = new Map<string, FormExtras>();
+  let rows: string[][];
+  try {
+    rows = await readRange("'Form Responses'!A1:AZ");
+  } catch (err) {
+    console.error("Form extras read failed:", err);
+    return out;
+  }
+  if (rows.length < 2) return out;
+  const headers = rows[0].map((h) => (h || "").trim().toLowerCase());
+  const find = (re: RegExp) => headers.findIndex((h) => re.test(h));
+  const cols = {
+    paymentCurrency: find(/payment currency/),
+    paymentCadence: find(/payment cadence/),
+    preferredName: find(/preferred name/),
+  };
+  if (Object.values(cols).every((i) => i < 0)) return out;
+  for (const row of rows.slice(1)) {
+    const name = canonicalName(row[3]);
+    if (!name || !(row[4] || "").toLowerCase().includes("onboarding")) continue;
+    const extras: FormExtras = {};
+    for (const [k, i] of Object.entries(cols) as [keyof FormExtras, number][]) {
+      const v = i >= 0 ? (row[i] || "").trim() : "";
+      if (v) extras[k] = v;
+    }
+    if (Object.keys(extras).length) out.set(name, extras);
+  }
+  return out;
+}
+
 export async function loadAll(): Promise<DashboardData> {
-  const [sot, countries, requestTimestamps] = await Promise.all([
+  const [sot, countries, requestTimestamps, formExtras] = await Promise.all([
     loadSot(),
     loadCountryLookup(),
     loadRequestTimestamps(),
+    loadOnboardingFormExtras(),
   ]);
   const [onboarding, extension, offboarding, rateChange] = await Promise.all([
-    loadOnboarding(sot, countries.byName, requestTimestamps),
-    loadExtension(sot, countries.byName, requestTimestamps),
+    loadOnboarding(sot, countries.byName, requestTimestamps, formExtras),
+    loadExtension(sot, countries.byName, requestTimestamps, formExtras),
     loadOffboarding(sot, countries.byName, requestTimestamps),
     loadRateChange(sot, countries.byName, requestTimestamps),
   ]);

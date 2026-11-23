@@ -17,7 +17,12 @@ const TYPE_BY_ANSWER: Record<string, RequestSource> = {
 };
 
 // Columns that are shown elsewhere in the card, or are renamed for clarity.
-const SKIP = new Set(["timestamp", "contractor's full name", "what type of request is this?"]);
+const SKIP = new Set([
+  "timestamp",
+  "contractor's full name",
+  "contractor's full legal name",
+  "what type of request is this?",
+]);
 const RENAME: Record<string, string> = {
   "your name": "Submitted by",
   "email address": "Submitter email",
